@@ -232,6 +232,7 @@ const facadeMat={
  plaster:new THREE.MeshStandardMaterial({color:0xd8c7ac,roughness:1}),
  cutPlaster:new THREE.MeshStandardMaterial({color:0xd8c7ac,roughness:1,transparent:true,opacity:.32}),
  cream:new THREE.MeshStandardMaterial({color:0xd6c098,roughness:.94}),
+ tile:new THREE.MeshStandardMaterial({color:0xc55c4f,roughness:.88,side:THREE.DoubleSide}),
  gate:new THREE.MeshStandardMaterial({color:0x624c40,roughness:.82}),
  concrete:new THREE.MeshStandardMaterial({color:0xa4a09a,roughness:1}),
  curb:new THREE.MeshStandardMaterial({color:0xb28d4c,roughness:1}),
@@ -488,6 +489,28 @@ function frameFacadeView(){
   start:performance.now()
  };
 }
+function addTileRoof(group,left,right,front){
+ const width=right-left;
+ const waves=Math.round(width/24),columns=waves*10,slopeSteps=6;
+ // Two courses overlap down the slope toward the street (+Z).
+ for(const [back,eave,lift] of [[-39,6,2],[1,44,0]]){
+  const geometry=new THREE.PlaneGeometry(width,1,columns,slopeSteps+1);
+  const points=geometry.getAttribute('position');
+  for(let i=0;i<points.count;i++){
+   const row=Math.floor(i/(columns+1));
+   const x=points.getX(i);
+   const z=THREE.MathUtils.lerp(back,eave,Math.min(row,slopeSteps)/slopeSteps);
+   const wave=2.9*(1-Math.cos(2*PI*waves*(x/width+.5)));
+   const lip=row>slopeSteps?1.6:0;
+   points.setXYZ(i,x,227+(44-z)*.31+wave+lift-lip,z);
+  }
+  geometry.computeVertexNormals();
+  const course=new THREE.Mesh(geometry,facadeMat.tile);
+  course.name='Hilera de tejas rojas';
+  course.position.set((left+right)/2,0,front);
+  group.add(course);
+ }
+}
 function buildHouseFacade(left,right,wallHeight,front,openingTop){
  const group=new THREE.Group();
  group.name='Fachada de la casa';
@@ -515,6 +538,7 @@ function buildHouseFacade(left,right,wallHeight,front,openingTop){
  const canopyEdge=openingTop>198?-68:40;
  box('Techo volado',facadeMat.cream,512+canopyEdge,14,76,(canopyEdge-512)/2,219,-2);
  box('Borde del techo',facadeMat.cream,513.5+canopyEdge,11.5,7,(canopyEdge-513.5)/2,216,37);
+ addTileRoof(group,shift-514,shift+canopyEdge,front);
  const sidewalkLeft=-542+shift,sidewalkRight=Math.max(258+shift,right+24);
  const sidewalkWidth=sidewalkRight-sidewalkLeft;
  const sidewalkCenter=(sidewalkLeft+sidewalkRight)/2-shift;
