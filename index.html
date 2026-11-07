@@ -105,11 +105,10 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 const $=id=>document.getElementById(id);const PI=Math.PI;
 const defaults={openingW:60,openingH:50,wallD:20,entryY:80,tongueL:30,tongueW:78.6,tongueT:.3,boxD:50,frameW:5,gap:.7,wheelD:7.5};
-const roofAllowance=10;
 const dimGroups=[
  {title:'01 · Muro y abertura de entrada',description:'Hueco por donde entra el paquete y posición respecto al piso.',
   fields:[['openingW','Ancho de abertura',45,120,'Medida horizontal del hueco exterior.'],['openingH','Alto de abertura',35,100,'Medida vertical del hueco exterior.'],['entryY','Altura de entrada desde el piso',65,180,'Desde el piso hasta el borde inferior de la abertura.'],['wallD','Espesor del muro',20,35,'Profundidad de la barda; referencia actual: 20 cm.']]},
- {title:'02 · Conjunto fijo del muro',description:'El marco abraza el muro y lleva montados el eje, la tapa y la pestaña basculante.',
+ {title:'02 · Conjunto fijo del muro',description:'El marco abraza el muro con el mismo grosor en ambas caras. Sostiene el eje, la tapa y la pestaña basculante.',
   fields:[['frameW','Ancho visible del marco',2,9,'Ancho del marco visible en ambas caras del muro.'],['gap','Holgura perimetral de tapa',.3,2,'Separación entre tapa y abertura por cada lado.']]},
  {title:'03 · Pestaña interior (pieza gris)',description:'La pestaña gira con la tapa sobre el eje del marco. Su ancho efectivo se limita al ancho de la tapa.',
   fields:[['tongueL','Longitud de pestaña',10,100,'Distancia desde el eje hasta su extremo interior.'],['tongueW','Ancho máximo de pestaña',20,115,'Ancho deseado. Si la tapa es más estrecha, la pestaña se reduce con ella.'],['tongueT','Espesor de pestaña',.2,2,'Grosor de la lámina de la pestaña.']]},
@@ -117,7 +116,7 @@ const dimGroups=[
   fields:[
    ['boxW','Ancho interior calculado',null,null,'Igual al ancho de la abertura.'],
    ['boxH','Altura del gabinete calculada',null,null,'Altura hasta el techo, medida desde la base sobre las ruedas.'],
-   ['boxTop','Altura total desde el piso',null,null,'Altura de entrada más alto de abertura más '+roofAllowance+' cm.'],
+   ['boxTop','Altura total desde el piso',null,null,'El techo del depósito se alinea con el borde superior del marco interior.'],
    ['boxD','Profundidad del depósito',50,170,'Medida independiente, hacia el interior de la casa.'],
    ['boxFloor','Altura de la base sobre el piso',null,null,'Se ajusta a la altura de montaje de las ruedas.']
   ]}
@@ -230,7 +229,7 @@ function wheelHeight(d){return d<=5.25?6.9:d<=8.5?10:13;}
 function syncCabinetDimensions(){
  p.boxW=p.openingW;
  p.boxFloor=wheelHeight(p.wheelD);
- p.boxTop=p.entryY+p.openingH+roofAllowance;
+ p.boxTop=p.entryY+p.openingH+p.frameW;
  p.boxH=p.boxTop-p.boxFloor;
  for(const key of ['boxW','boxFloor','boxTop','boxH'])$('p_'+key).value=Number(p[key].toFixed(2));
 }
@@ -492,11 +491,11 @@ function build(){
  meshBox(wallAssembly,recessW,linerT,D,0,high+linerT/2,0,mat.frame,'Canto superior del marco');
  // The existing sill forms the lower liner and supports the lid when open.
  meshBox(wallAssembly,W,1,D,0,low+.5,0,mat.frame,'Apoyo en canto del muro');
- for(const [face,z,depth] of [['exterior',front+.75,1.5],['interior',rear-linerT/2,linerT]]){
-  meshBox(wallAssembly,W+2*F,F,depth,0,high+F/2,z,mat.frame,'Marco '+face+' superior');
-  meshBox(wallAssembly,W+2*F,F,depth,0,low-F/2,z,mat.frame,'Marco '+face+' inferior');
-  meshBox(wallAssembly,F,H,depth,-W/2-F/2,low+H/2,z,mat.frame,'Marco '+face+' izquierdo');
-  meshBox(wallAssembly,F,H,depth,W/2+F/2,low+H/2,z,mat.frame,'Marco '+face+' derecho');
+ for(const [face,z] of [['exterior',front+linerT/2],['interior',rear-linerT/2]]){
+  meshBox(wallAssembly,W+2*F,F,linerT,0,high+F/2,z,mat.frame,'Marco '+face+' superior');
+  meshBox(wallAssembly,W+2*F,F,linerT,0,low-F/2,z,mat.frame,'Marco '+face+' inferior');
+  meshBox(wallAssembly,F,H,linerT,-W/2-F/2,low+H/2,z,mat.frame,'Marco '+face+' izquierdo');
+  meshBox(wallAssembly,F,H,linerT,W/2+F/2,low+H/2,z,mat.frame,'Marco '+face+' derecho');
  }
  // SINGLE rigid moving assembly: one parent, a tall exterior leaf (+local Y), a tongue (-local Y), same axis.
  hingeZ=rear-1.3;hingeY=low+1.2;
