@@ -51,6 +51,8 @@ button:hover{background:#dcebf0}
 .gridfields input[readonly]{background:#eef4f7}.buttons button:disabled{opacity:.55;cursor:default}
 .latch-controls{margin:8px 0 12px}.latch-controls .buttons{margin:8px 0}.latch-controls p{margin:6px 0}
 .detail-key{font-size:11px;color:var(--txt);margin-top:7px}.detail-key b{color:#126b61}
+.dimension-toggle{display:inline-flex;align-items:center;gap:5px;margin-top:7px;pointer-events:auto;color:#126b61;font-size:11px;font-weight:650;cursor:pointer}
+.dimension-toggle[hidden]{display:none}.dimension-toggle input{accent-color:#126b61;margin:0}
 </style></head><body>
 <header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V11 · catálogo Amazon y ruedas industriales · unidades en cm · unidades en cm</small></div><span class="pill">Modelo conceptual editable</span></header>
 <main><aside class="sidebar">
@@ -96,7 +98,7 @@ button:hover{background:#dcebf0}
 <div class="card" id="checks" style="margin-top:10px">Preparando comprobaciones...</div>
 <h2>Guardar y exportar</h2><div class="buttons"><button id="save">Guardar medidas (.json)</button><button id="load">Cargar medidas</button><button id="snapshot">Imagen PNG</button></div><input id="loadfile" type="file" accept=".json,application/json" hidden>
 <p class="muted2" style="margin-top:20px">⚠️ La ubicación final y la acumulación de cajas son geométricas y aproximadas; NO constituyen una simulación dinámica de gravedad, choques o fricción. Las comprobaciones verifican límites geométricos básicos y NO garantizan que la caja deslice, caiga o permita el retorno. Antes de fabricar necesitaremos evaluar colisiones 3D, masa, fricción, gravedad, holguras, cargas, seguridad y hacer un prototipo físico. El plano de fabricación queda pendiente.</p>
-</aside><section class="viewport"><div id="canvas"></div><div class="overlay"><strong id="viewTitle">Vista exterior</strong><p id="viewDescription">Arrastra con el mouse para rotar y usa la rueda para acercarte. La tapa está remetida hasta la cara interior del muro de 20 cm.</p><div id="latchKey" class="detail-key" hidden><b>Verde</b> · leva del depósito<br><strong style="color:var(--txt)">Acero claro</strong> · receptor del marco y acceso Allen</div></div><div class="corner">Calle (+Z) · Casa (−Z)</div><div class="footer"><div class="row"><strong id="phase">Tapa cerrada, depósito oculto</strong><span id="clock" class="muted">0.0 / 12.0 s</span></div><input type="range" min="0" max="12" step="0.01" id="timeline" value="0"><div class="legend">El conjunto del muro incluye marco, eje, tapa y pestaña. El depósito con ruedas se retira hacia el interior para separarlo del conjunto fijo.</div></div></section></main>
+</aside><section class="viewport"><div id="canvas"></div><div class="overlay"><strong id="viewTitle">Vista exterior</strong><p id="viewDescription">Arrastra con el mouse para rotar y usa la rueda para acercarte. La tapa está remetida hasta la cara interior del muro.</p><label id="dimensionToggle" class="dimension-toggle"><input type="checkbox" id="showDimensions" checked> Mostrar cotas</label><div id="latchKey" class="detail-key" hidden><b>Verde</b> · leva del depósito<br><strong style="color:var(--txt)">Acero claro</strong> · receptor del marco y acceso Allen</div></div><div class="corner">Calle (+Z) · Casa (−Z)</div><div class="footer"><div class="row"><strong id="phase">Tapa cerrada, depósito oculto</strong><span id="clock" class="muted">0.0 / 12.0 s</span></div><input type="range" min="0" max="12" step="0.01" id="timeline" value="0"><div class="legend">El conjunto del muro incluye marco, eje, tapa y pestaña. El depósito con ruedas se retira hacia el interior para separarlo del conjunto fijo.</div></div></section></main>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
@@ -130,8 +132,12 @@ let p={...defaults},pack={...PACKS.medium},theta=0,stage='none',progress=0,acces
 let scene,camera,renderer,orbit,root,cabinet,pivot,parcel,access,guideGroup,deliveryGuide,camTween=null,boxCenterZ=0,hingeZ=0,hingeY=0;
 let cabinetOffset=0,cabinetLocked=true,rollingMeshes=[];
 let currentView='outer',latchParts=[];
+let dimensions=[],viewportHeight=0;
+const dimensionFormat=new Intl.NumberFormat('es-MX',{maximumFractionDigits:2});
+const dimensionInk=new THREE.LineBasicMaterial({color:0x28776d,transparent:true,opacity:.88,depthTest:false,depthWrite:false});
 let stored=[],deliveryCommitted=false,deliverySlot=null,deliveryBlocked=false,deliveryReason='',deliveryOrientation=0;
-const mat={wall:new THREE.MeshStandardMaterial({color:0x8893a1,roughness:1}),frame:new THREE.MeshStandardMaterial({color:0x222a34,metalness:.68,roughness:.36}),lid:new THREE.MeshStandardMaterial({color:0x323e4b,metalness:.55,roughness:.42,side:THREE.DoubleSide}),tongue:new THREE.MeshStandardMaterial({color:0x7d929f,metalness:.3,roughness:.5,side:THREE.DoubleSide}),box:new THREE.MeshStandardMaterial({color:0x252e39,metalness:.35,roughness:.56,side:THREE.DoubleSide}),inner:new THREE.MeshStandardMaterial({color:0x101923,roughness:.85,side:THREE.DoubleSide}),handle:new THREE.MeshStandardMaterial({color:0xc3d4df,metalness:.83,roughness:.21}),pkg:new THREE.MeshStandardMaterial({color:0xbf813f,roughness:.96}),tape:new THREE.MeshStandardMaterial({color:0xe9d6aa,roughness:.9}),hinge:new THREE.MeshStandardMaterial({color:0xd8a760,metalness:.55,roughness:.34}),ground:new THREE.MeshStandardMaterial({color:0x25303c,roughness:.96}),
+const mat={wall:new THREE.MeshStandardMaterial({color:0x8893a1,roughness:1}),
+ wallCut:new THREE.MeshStandardMaterial({color:0x8593a2,roughness:1,transparent:true,opacity:.32}),frame:new THREE.MeshStandardMaterial({color:0x222a34,metalness:.68,roughness:.36}),lid:new THREE.MeshStandardMaterial({color:0x323e4b,metalness:.55,roughness:.42,side:THREE.DoubleSide}),tongue:new THREE.MeshStandardMaterial({color:0x7d929f,metalness:.3,roughness:.5,side:THREE.DoubleSide}),box:new THREE.MeshStandardMaterial({color:0x252e39,metalness:.35,roughness:.56,side:THREE.DoubleSide}),inner:new THREE.MeshStandardMaterial({color:0x101923,roughness:.85,side:THREE.DoubleSide}),handle:new THREE.MeshStandardMaterial({color:0xc3d4df,metalness:.83,roughness:.21}),pkg:new THREE.MeshStandardMaterial({color:0xbf813f,roughness:.96}),tape:new THREE.MeshStandardMaterial({color:0xe9d6aa,roughness:.9}),hinge:new THREE.MeshStandardMaterial({color:0xd8a760,metalness:.55,roughness:.34}),ground:new THREE.MeshStandardMaterial({color:0x25303c,roughness:.96}),
  caster:new THREE.MeshStandardMaterial({color:0x9aaab8,metalness:.78,roughness:.3}),
  rubber:new THREE.MeshStandardMaterial({color:0x22262b,roughness:.93}),
  brake:new THREE.MeshStandardMaterial({color:0xd68a42,metalness:.35,roughness:.55}),
@@ -368,16 +374,116 @@ function frameFocusedView(){
  if(currentView==='cut')frameCutView();
  if(currentView==='latch')frameLatchView();
 }
+function buildWall(span,height,width,bottom,top,depth){
+ const face=new THREE.Shape();
+ face.moveTo(-span/2,0);
+ face.lineTo(span/2,0);
+ face.lineTo(span/2,height);
+ face.lineTo(-span/2,height);
+ face.closePath();
+ const opening=new THREE.Path();
+ opening.moveTo(-width/2,bottom);
+ opening.lineTo(-width/2,top);
+ opening.lineTo(width/2,top);
+ opening.lineTo(width/2,bottom);
+ opening.closePath();
+ face.holes.push(opening);
+ const geometry=new THREE.ExtrudeGeometry(face,{depth,bevelEnabled:false});
+ geometry.translate(0,0,-depth/2);
+ const wall=new THREE.Mesh(geometry,cut?mat.wallCut:mat.wall);
+ wall.name='Muro con abertura';
+ root.add(wall);
+}
+function addDimension(parent,title,value,from,to,displacement){
+ const start=new THREE.Vector3(...from),end=new THREE.Vector3(...to);
+ const offset=new THREE.Vector3(...displacement),extension=offset.clone().normalize().multiplyScalar(2);
+ const a=start.clone().add(offset),b=end.clone().add(offset);
+ const slash=b.clone().sub(a).normalize().multiplyScalar(2).add(extension);
+ const geometry=new THREE.BufferGeometry().setFromPoints([
+  a,b,
+  start,a.clone().add(extension),end,b.clone().add(extension),
+  a.clone().sub(slash),a.clone().add(slash),
+  b.clone().sub(slash),b.clone().add(slash)
+ ]);
+ const group=new THREE.Group();
+ group.name='Cota · '+title;
+ parent.add(group);
+ const lines=new THREE.LineSegments(geometry,dimensionInk);
+ lines.renderOrder=10;
+ group.add(lines);
+
+ const caption=title+' '+dimensionFormat.format(value)+' cm';
+ const canvas=document.createElement('canvas'),context=canvas.getContext('2d');
+ const font='600 12px system-ui, sans-serif';
+ context.font=font;
+ const width=Math.ceil(context.measureText(caption).width)+16,height=22;
+ canvas.width=width*2;
+ canvas.height=height*2;
+ context.scale(2,2);
+ context.beginPath();
+ context.roundRect(.5,.5,width-1,height-1,6);
+ context.fillStyle='#f8fafc';
+ context.fill();
+ context.strokeStyle='#86aaa4';
+ context.stroke();
+ context.font=font;
+ context.textBaseline='middle';
+ context.fillStyle='#144f48';
+ context.fillText(caption,8,height/2);
+ const texture=new THREE.CanvasTexture(canvas);
+ texture.colorSpace=THREE.SRGBColorSpace;
+ const label=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,depthTest:false,depthWrite:false,toneMapped:false}));
+ label.position.copy(a).lerp(b,.5);
+ label.name=caption;
+ label.renderOrder=11;
+ group.add(label);
+ dimensions.push({group,label,a,b,width,height});
+}
+function buildDimensions(front,rear,boxFront,boxBack,boxHalfWidth){
+ const half=p.openingW/2,low=p.entryY,high=low+p.openingH;
+ addDimension(root,'Ancho',p.openingW,[-half,high,front],[half,high,front],[0,18,1]);
+ addDimension(root,'Alto',p.openingH,[-half,low,front],[-half,high,front],[-17,0,1]);
+ addDimension(root,'Entrada',low,[-half,0,front],[-half,low,front],[-26,0,1]);
+ addDimension(root,'Muro',p.wallD,[half,high,front],[half,high,rear],[13,30,0]);
+ addDimension(cabinet,'Fondo',p.boxD,[boxHalfWidth,p.boxFloor,boxFront],[boxHalfWidth,p.boxFloor,boxBack],[16,19,0]);
+ addDimension(cabinet,'Total',p.boxTop,[boxHalfWidth,0,boxBack],[boxHalfWidth,p.boxTop,boxBack],[30,0,0]);
+}
+const labelWorld=new THREE.Vector3(),labelScreen=new THREE.Vector3();
+const startScreen=new THREE.Vector3(),endScreen=new THREE.Vector3();
+function renderScene(){
+ camera.updateMatrixWorld();
+ const visible=$('showDimensions').checked && currentView!=='latch' && viewportHeight>0;
+ const screenWidth=viewportHeight*camera.aspect;
+ const worldPerPixel=2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/viewportHeight;
+ const occupied=[];
+ for(const {group,label,a,b,width,height} of dimensions){
+  group.visible=false;
+  if(!visible || (!cut && group.parent===cabinet && camera.position.z>p.wallD/2))continue;
+  group.updateWorldMatrix(true,false);
+  startScreen.copy(a).applyMatrix4(group.matrixWorld).project(camera);
+  endScreen.copy(b).applyMatrix4(group.matrixWorld).project(camera);
+  const length=Math.hypot((startScreen.x-endScreen.x)*screenWidth,(startScreen.y-endScreen.y)*viewportHeight)/2;
+  labelWorld.copy(label.position).applyMatrix4(group.matrixWorld);
+  labelScreen.copy(labelWorld).project(camera);
+  const x=(labelScreen.x+1)*screenWidth/2,y=(1-labelScreen.y)*viewportHeight/2;
+  const scale=-labelWorld.applyMatrix4(camera.matrixWorldInverse).z*worldPerPixel;
+  if(length<18 || length*scale<a.distanceTo(b)*.28 || labelScreen.z<-1 || labelScreen.z>1)continue;
+  if(x<width/2 || x>screenWidth-width/2 || y<height/2 || y>viewportHeight-height/2)continue;
+  if(occupied.some(other=>Math.abs(other.x-x)<(other.width+width)/2+4 && Math.abs(other.y-y)<height+4))continue;
+  label.scale.set(width*scale,height*scale,1);
+  group.visible=true;
+  occupied.push({x,y,width});
+ }
+ renderer.render(scene,camera);
+}
 function build(){
- if(root){scene.remove(root);root.traverse(o=>{if(o.geometry)o.geometry.dispose()});}
+ if(root){scene.remove(root);root.traverse(o=>{if(o.isMesh || o.isLine)o.geometry.dispose()});}
+ for(const {label} of dimensions){label.material.map.dispose();label.material.dispose();}
+ dimensions=[];
  root=new THREE.Group();scene.add(root);
  const W=p.openingW,H=p.openingH,D=p.wallD,F=p.frameW,front=D/2,rear=-D/2,low=p.entryY,high=low+H,wallTop=Math.max(265,high+60),span=Math.max(280,W+165);
- const linerT=.25,recessW=W+2*linerT,recessTop=high+linerT,sideW=(span-recessW)/2;
- const wallMat=cut?new THREE.MeshStandardMaterial({color:0x8593a2,roughness:1,transparent:true,opacity:.32}):mat.wall;
- meshBox(root,sideW,wallTop,D,-recessW/2-sideW/2,wallTop/2,0,wallMat,'Muro izquierdo');
- meshBox(root,sideW,wallTop,D,recessW/2+sideW/2,wallTop/2,0,wallMat,'Muro derecho');
- meshBox(root,recessW,wallTop-recessTop,D,0,(wallTop+recessTop)/2,0,wallMat,'Muro sobre abertura');
- meshBox(root,recessW,low,D,0,low/2,0,wallMat,'Muro bajo abertura');
+ const linerT=.25,recessW=W+2*linerT,recessTop=high+linerT;
+ buildWall(span,wallTop,recessW,low,recessTop,D);
 
  const wallAssembly=new THREE.Group();wallAssembly.name='01 · Conjunto fijo del muro';root.add(wallAssembly);
  // The liners sit flush in the wall recess, keeping the opening clear for the lid.
@@ -458,6 +564,7 @@ function build(){
  cylinder(guideGroup,1.65,hingeWidth,0,hingeY,hingeZ,new THREE.MeshBasicMaterial({color:0x9c601e}));
  const s=packageOnTongue();const target=packageStored();const a=new THREE.Vector3(0,low+pack.h/2+6,front+pack.d/2+18);
  deliveryGuide=addLine(guideGroup,[a,s,new THREE.Vector3(0,low-5,hingeZ-p.tongueL*.55),target],0x177689);
+ buildDimensions(front,rear,boxFront,boxBack,BW/2);
  positionCabinet();
  setAngle(theta);updateParcel();stored.forEach(renderStoredPackage);updateChecks();updateStoredStatus();
 }
@@ -615,7 +722,7 @@ function setTime(t){time=Math.max(0,Math.min(12,t));let a=0,which='none',mix=0,d
  if(deliveryCommitted && parcel)parcel.visible=false;
  $('timeline').value=time;$('clock').textContent=time.toFixed(1)+' / 12.0 s';$('phase').textContent=desc;
 }
-const views={outer:{position:[245,190,295],label:'Vista exterior',desc:'Tapa remetida ~20 cm desde la fachada. El canto del muro sirve de apoyo al abrir.'},inside:{position:[210,170,-320],label:'Vista interior de la casa',desc:'Gabinete negro opaco. La puerta permite retirar paquetes; cerrada oculta todo el contenido.'},cut:{label:'Corte lateral',desc:'El marco y su mecanismo quedan en el muro al retirar el depósito sobre ruedas.'},front:{position:[0,155,395],label:'Vista de fachada',desc:'Marco metálico fijo al muro con eje y tapa basculante.'},latch:{label:'Detalle del cierre oculto',desc:'Corte del cierre derecho. Libera o fija el depósito para ver cómo la leva engancha el perno.'},mechanism:{position:[260,175,140],label:'Vista del mecanismo',desc:'Activa el corte para inspeccionar el brazo exterior y la pestaña interior como una sola pieza.'}};
+const views={outer:{position:[245,190,295],label:'Vista exterior',desc:'La tapa queda remetida en la cara interior del muro. El canto sirve de apoyo al abrir.'},inside:{position:[210,170,-320],label:'Vista interior de la casa',desc:'Gabinete negro opaco. La puerta permite retirar paquetes; cerrada oculta todo el contenido.'},cut:{label:'Corte lateral',desc:'El marco y su mecanismo quedan en el muro al retirar el depósito sobre ruedas.'},front:{position:[0,155,395],label:'Vista de fachada',desc:'Marco metálico fijo al muro con eje y tapa basculante.'},latch:{label:'Detalle del cierre oculto',desc:'Corte del cierre derecho. Libera o fija el depósito para ver cómo la leva engancha el perno.'},mechanism:{position:[260,175,140],label:'Vista del mecanismo',desc:'Activa el corte para inspeccionar el brazo exterior y la pestaña interior como una sola pieza.'}};
 function selectView(key){
  currentView=key;
  const v=views[key];
@@ -624,6 +731,7 @@ function selectView(key){
  }
  $('viewTitle').textContent=v.label;$('viewDescription').textContent=v.desc;
  $('latchKey').hidden=key!=='latch';
+ $('dimensionToggle').hidden=key==='latch';
  $('latchDetail').textContent=key==='latch'?'Volver al corte':'Detalle del cierre';
  guideGroup.visible=guides && key!=='latch';
  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===key));
@@ -669,10 +777,10 @@ function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.
  prepareNext();
  build();$('message').textContent='Medidas y cajas guardadas recuperadas.';
  frameFocusedView();}catch(err){$('message').textContent='No se pudo leer la configuración.';}e.target.value='';};
- $('snapshot').onclick=()=>{renderer.render(scene,camera);const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='buzon-v13-vista.png';a.click();};
+ $('snapshot').onclick=()=>{renderScene();const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='buzon-v13-vista.png';a.click();};
 }
 function download(text,name,type){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
-function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);frameFocusedView();}
+function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;viewportHeight=h;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);frameFocusedView();}
 init();settingsUI();syncCabinetDimensions();initAmazonCatalog();buttonControls();updateCabinetControls();build();setTime(0);resize();window.addEventListener('resize',resize);
-function animate(now){requestAnimationFrame(animate);const dt=Math.min(.06,(now-prev)/1000);prev=now;if(playing){setTime(time+dt*speed);if(time>=12)playing=false;}if(camTween){const u=Math.min(1,(now-camTween.start)/600);camera.position.lerpVectors(camTween.from,camTween.to,smooth(u));if(u>=1)camTween=null;}orbit.update();renderer.render(scene,camera);}requestAnimationFrame(animate);
+function animate(now){requestAnimationFrame(animate);const dt=Math.min(.06,(now-prev)/1000);prev=now;if(playing){setTime(time+dt*speed);if(time>=12)playing=false;}if(camTween){const u=Math.min(1,(now-camTween.start)/600);camera.position.lerpVectors(camTween.from,camTween.to,smooth(u));if(u>=1)camTween=null;}orbit.update();renderScene();}requestAnimationFrame(animate);
 </script></body></html>
