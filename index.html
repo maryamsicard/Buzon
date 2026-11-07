@@ -216,11 +216,12 @@ function build(){
  hingeZ=rear-1.3;hingeY=low+1.2;
  pivot=new THREE.Group();pivot.name='Tapa y pestaña — una pieza rígida';pivot.position.set(0,hingeY,hingeZ);root.add(pivot);
  const lidW=W-2*p.gap,lidH=H-2*p.gap;
+ const hingeWidth=Math.min(lidW,p.tongueW);
  meshBox(pivot,lidW,lidH,.5,0,lidH/2,0,mat.lid,'Tapa exterior');
  meshBox(pivot,p.tongueW,p.tongueL,p.tongueT,0,-p.tongueL/2,0,mat.tongue,'Pestaña interior solidaria (editable e independiente de dimensiones de tapa)');
  // Shaft and hinges occupy the same origin.
- cylinder(root,.85,W+9,0,hingeY,hingeZ,mat.hinge);
- for(const x of [-lidW*.37,lidW*.37]){const h=cylinder(pivot,1.7,5,x,0,0,mat.hinge);h.rotation.z=PI/2;}
+ cylinder(root,.85,hingeWidth,0,hingeY,hingeZ,mat.hinge);
+ for(const x of [-hingeWidth*.37,hingeWidth*.37]){const h=cylinder(pivot,1.7,5,x,0,0,mat.hinge);h.rotation.z=PI/2;}
  // Handle follows the exterior lid, visible when shut.
  meshBox(pivot,lidW*.33,.8,2,0,lidH*.78,2,mat.handle,'Manija de depósito');
  // Cabinet behind inner face of wall. Closed on all sides except its access door on room side.
@@ -264,7 +265,7 @@ function build(){
  meshBox(parcel,pack.w,pack.h,pack.d,0,0,0,mat.pkg,'Paquete');meshBox(parcel,pack.w,.35,2,0,pack.h/2+.2,0,mat.tape,'Cinta');
  // Guides: revolve around hinge and show conceptual fall towards bottom of the opaque deposit.
  guideGroup=new THREE.Group();guideGroup.visible=guides;root.add(guideGroup);
- cylinder(guideGroup,1.65,W+17,0,hingeY,hingeZ,new THREE.MeshBasicMaterial({color:0x9c601e}));
+ cylinder(guideGroup,1.65,hingeWidth,0,hingeY,hingeZ,new THREE.MeshBasicMaterial({color:0x9c601e}));
  const s=packageOnTongue();const target=packageStored();const a=new THREE.Vector3(0,low+pack.h/2+6,front+pack.d/2+18);
  addLine(guideGroup,[a,s,new THREE.Vector3(0,low-5,hingeZ-p.tongueL*.55),target],0x177689);
  setAngle(theta);updateParcel();renderStored();updateChecks();updateStoredStatus();
