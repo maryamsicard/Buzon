@@ -5,7 +5,7 @@ const format=new Intl.NumberFormat('es-MX',{maximumFractionDigits:2});
 const cm=value=>format.format(value)+' cm';
 const pair=(a,b)=>format.format(a)+' × '+cm(b);
 
-export function createPlans(p,hardware){
+export function createPlans(p,hardware,views=[]){
  const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4',compress:true});
  pdf.setProperties({title:'Buzón de paquetes - planos y despieces',subject:'Configuración actual del simulador Buzón 3D'});
  const w=p.openingW,h=p.openingH,f=p.frameW,outerW=w+2*p.cabinetWallThickness;
@@ -45,7 +45,7 @@ export function createPlans(p,hardware){
   line(14,40,283,40,rule);
   line(14,195,283,195,rule);
   text('Cotas en centímetros. Verificar montaje, tolerancias y anclajes antes de fabricar.',14,201,{size:8,color:muted});
-  text(String(number).padStart(2,'0')+' / 05',283,201,{size:9,color:accent,bold:true,align:'right'});
+  text(String(number).padStart(2,'0')+' / '+String(5+views.length).padStart(2,'0'),283,201,{size:9,color:accent,bold:true,align:'right'});
  }
  function panel(x,y,width,height,title){
   rect(x,y,width,height,'#ffffff');
@@ -195,7 +195,7 @@ export function createPlans(p,hardware){
    ['Cantos y apoyo del muro','1 juego','Abertura '+pair(w,h)+' · canto a lo largo del muro de '+cm(p.wallD)],
    ['Tapa exterior','1',pair(p.lidW,p.lidH)+' · holgura perimetral '+cm(p.gap)],
    ['Pestaña solidaria','1',pair(p.tongueW,p.tongueL)+' · espesor '+cm(p.tongueT)],
-   ['Eje compartido y soportes','1 conjunto','Largo del eje '+cm(Math.min(p.lidW,p.tongueW))]
+   ['Eje compartido y soportes','1 conjunto','Largo del eje '+cm(p.tongueW)]
   ],8.4);
  }
 
@@ -281,5 +281,42 @@ export function createPlans(p,hardware){
    if(i<hardware.length-1)line(156,y+16,277,y+16,rule,.2);
   });
  }
+ const viewSheets=[
+  {
+   title:'Vista 3D exterior',
+   description:'Perspectiva desde la calle con el depósito acoplado y el muro en transparencia.',
+   imageTitle:'06A  Marco y abertura',
+   notes:'La altura de entrada se mide desde el piso hasta el borde inferior de la abertura.',
+   measures:[['Ancho de abertura',w],['Alto de abertura',h],['Altura de entrada',p.entryY],['Espesor del muro',p.wallD]]
+  },
+  {
+   title:'Vista 3D interior',
+   description:'Perspectiva desde la casa con la puerta de recogida cerrada y las ruedas apoyadas en el piso.',
+   imageTitle:'07A  Depósito y ruedas',
+   notes:'La altura total incluye las ruedas. La profundidad corresponde al cuerpo del depósito.',
+   measures:[['Ancho interior',w],['Profundidad',p.boxD],['Altura total',p.boxTop],['Altura del cuerpo',p.boxH],['Diámetro de rueda',p.wheelD]]
+  },
+  {
+   title:'Vista 3D del mecanismo',
+   description:'Perspectiva de la tapa abierta, la pestaña interior y el eje compartido.',
+   imageTitle:'08A  Conjunto fijo con tapa abierta',
+   notes:'La tapa y la pestaña giran juntas sobre el eje que las une al marco.',
+   measures:[['Alto de tapa',p.lidH],['Largo de pestaña',p.tongueL],['Ancho de pestaña',p.tongueW],['Longitud del eje',p.tongueW],['Espesor de pestaña',p.tongueT]]
+  }
+ ];
+ views.forEach((image,i)=>{
+  const view=viewSheets[i];
+  header(6+i,view.title,view.description);
+  panel(14,47,199,138,view.imageTitle);
+  pdf.addImage(image,'PNG',18,59,191,122,undefined,'FAST');
+  panel(219,47,64,138,'Cotas principales');
+  view.measures.forEach(([label,value],j)=>{
+   const y=67+j*16;
+   text(label,225,y,{size:9.5,color:muted});
+   text(cm(value),225,y+5,{size:12,bold:true});
+  });
+  paragraph(view.notes,225,155,52,8.5);
+  text('Perspectiva sin escala.',225,177,{size:8.5,color:accent,bold:true});
+ });
  return pdf.output('blob');
 }

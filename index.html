@@ -124,8 +124,8 @@ button:hover{background:#dcebf0}
 <div id="dimensions"></div>
 <div class="card" id="checks" style="margin-top:10px">Preparando comprobaciones...</div>
 <h2 id="exportar">Planos y exportación</h2>
-<div class="buttons"><button class="primary" id="exportPdf">Descargar planos PDF</button><button id="snapshot">Imagen PNG</button></div>
-<p class="muted2" id="pdfStatus" role="status">Vistas acotadas, despieces y herrajes con las medidas actuales.</p>
+<div class="buttons"><button class="primary" id="exportPdf">Descargar planos PDF</button><button id="snapshot">Imagen 3D para imprimir</button></div>
+<p class="muted2" id="pdfStatus" role="status">El PDF reúne planos, despieces y vistas 3D. La imagen PNG reúne las tres vistas 3D acotadas en una lámina.</p>
 <details class="export-options"><summary>Guardar o recuperar una configuración (JSON)</summary>
 <div class="buttons"><button id="save">Guardar medidas (.json)</button><button id="load">Cargar medidas (.json)</button></div>
 <p class="muted2">El JSON conserva las medidas editables para continuar en el simulador.</p></details>
@@ -181,14 +181,14 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 const $=id=>document.getElementById(id);const PI=Math.PI;
 const frameThickness=.25,cabinetWallThickness=1.4,dockingGap=2;
-const defaults={openingW:60,openingH:50,wallD:20,entryY:80,tongueL:30,tongueW:78.6,tongueT:.3,boxD:50,frameW:5,gap:.7,wheelD:7.5};
+const defaults={openingW:60,openingH:50,wallD:20,entryY:80,tongueL:35,tongueW:60,tongueT:.3,boxD:50,frameW:5,gap:.7,wheelD:7.5};
 const dimGroups=[
  {title:'01 · Muro y abertura de entrada',description:'Hueco por donde entra el paquete y posición respecto al piso.',
   fields:[['openingW','Ancho de abertura',45,120,'Medida horizontal del hueco exterior.'],['openingH','Alto de abertura',35,100,'Medida vertical del hueco exterior.'],['entryY','Altura de entrada desde el piso',65,180,'Desde el piso hasta el borde inferior de la abertura.'],['wallD','Espesor del muro',20,35,'Profundidad de la barda; referencia actual: 20 cm.']]},
  {title:'02 · Conjunto fijo del muro',description:'El marco abraza el muro con el mismo grosor en ambas caras. Sostiene el eje, la tapa y la pestaña basculante.',
   fields:[['frameW','Ancho visible del marco',2,9,'Ancho del marco visible en ambas caras del muro.'],['gap','Holgura perimetral de tapa',.3,2,'Separación entre tapa y abertura por cada lado.']]},
- {title:'03 · Pestaña interior (pieza gris)',description:'La pestaña gira con la tapa sobre el eje del marco. Su ancho efectivo se limita al ancho de la tapa.',
-  fields:[['tongueL','Longitud de pestaña',10,100,'Distancia desde el eje hasta su extremo interior.'],['tongueW','Ancho máximo de pestaña',20,115,'Ancho deseado. Si la tapa es más estrecha, la pestaña se reduce con ella.'],['tongueT','Espesor de pestaña',.2,2,'Grosor de la lámina de la pestaña.']]},
+ {title:'03 · Pestaña interior (pieza gris)',description:'La pestaña gira con la tapa sobre el eje del marco. Su ancho efectivo se limita al ancho de la abertura.',
+  fields:[['tongueL','Longitud de pestaña',10,100,'Distancia desde el eje hasta su extremo interior.'],['tongueW','Ancho máximo de pestaña',20,120,'Ancho deseado. Si la abertura es más estrecha, la pestaña se ajusta a la abertura.'],['tongueT','Espesor de pestaña',.2,2,'Grosor de la lámina de la pestaña.']]},
  {title:'04 · Depósito móvil',description:'El gabinete, la puerta y las ruedas forman el segundo conjunto.',
   fields:[
    ['boxW','Ancho interior calculado',null,null,'Igual al ancho de la abertura.'],
@@ -319,7 +319,7 @@ function syncCabinetDimensions(){
  p.boxH=p.boxTop-p.boxFloor;
  for(const key of ['boxW','boxFloor','boxTop','boxH'])$('p_'+key).value=Number(p[key].toFixed(2));
 }
-function tongueWidth(){return Math.min(p.tongueW,p.openingW-2*p.gap);}
+function tongueWidth(){return Math.min(p.tongueW,p.openingW);}
 function latchHeight(){
  const top=p.entryY+p.openingH;
  return Math.max(p.entryY+7,Math.min(top-7,160));
@@ -518,7 +518,7 @@ function buildHouseFacade(left,right,wallHeight,front,openingTop){
  facadeBounds.expandByPoint(new THREE.Vector3(right,wallHeight,-front));
 }
 
-function buildWall(left,right,height,width,bottom,top,depth,houseFacade){
+function makeWall(left,right,height,width,bottom,top,depth,material){
  const face=new THREE.Shape();
  face.moveTo(left,0);
  face.lineTo(right,0);
@@ -534,11 +534,9 @@ function buildWall(left,right,height,width,bottom,top,depth,houseFacade){
  face.holes.push(opening);
  const geometry=new THREE.ExtrudeGeometry(face,{depth,bevelEnabled:false});
  geometry.translate(0,0,-depth/2);
- const solid=houseFacade?facadeMat.plaster:mat.wall;
- const transparent=houseFacade?facadeMat.cutPlaster:mat.wallCut;
- const wall=new THREE.Mesh(geometry,cut?transparent:solid);
+ const wall=new THREE.Mesh(geometry,material);
  wall.name='Muro con abertura';
- root.add(wall);
+ return wall;
 }
 function addDimension(parent,title,value,from,to,displacement){
  const start=new THREE.Vector3(...from),end=new THREE.Vector3(...to);
@@ -695,7 +693,9 @@ function build(){
  const left=houseFacade?-Math.max(68,W/2+F+17):-span/2;
  const right=houseFacade?Math.max(210,span/2):span/2;
  const height=houseFacade?Math.max(290,wallTop):wallTop;
- buildWall(left,right,height,recessW,low,recessTop,D,houseFacade);
+ const solid=houseFacade?facadeMat.plaster:mat.wall;
+ const transparent=houseFacade?facadeMat.cutPlaster:mat.wallCut;
+ root.add(makeWall(left,right,height,recessW,low,recessTop,D,cut?transparent:solid));
  if(houseFacade)buildHouseFacade(left,right,height,front,high+F);
  else facadeBounds=new THREE.Box3(new THREE.Vector3(left,0,rear),new THREE.Vector3(right,height,front));
 
@@ -1032,10 +1032,12 @@ function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.
  prepareNext();
  build();$('message').textContent='Medidas y cajas guardadas recuperadas.';
  frameFocusedView();}catch(err){$('message').textContent='No se pudo leer la configuración.';}e.target.value='';};
+ function planMeasures(){
+  return {...p,lidW:p.openingW-2*p.gap,lidH:p.openingH-2*p.gap,tongueW:tongueWidth(),
+   frameThickness,cabinetWallThickness,dockingGap,latchY:latchHeight()};
+ }
  $('exportPdf').onclick=async()=>{
   const button=$('exportPdf'),status=$('pdfStatus');
-  const measures={...p,lidW:p.openingW-2*p.gap,lidH:p.openingH-2*p.gap,tongueW:tongueWidth(),
-   frameThickness,cabinetWallThickness,dockingGap,latchY:latchHeight()};
   const hardware=[...document.querySelectorAll('[data-hardware]')].map(card=>({
    part:card.querySelector('.hardware-part').textContent,qty:card.querySelector('.hardware-quantity').textContent,
    ref:card.querySelector('.hardware-ref').textContent,url:card.querySelector('[data-ficha]').href
@@ -1043,9 +1045,10 @@ function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.
   button.disabled=true;
   status.textContent='Preparando el PDF…';
   try{
-   const {createPlans}=await import('./planos.js');
-   download(createPlans(measures,hardware),'buzon-planos.pdf','application/pdf');
-   status.textContent='PDF listo con cinco láminas.';
+   const {createPlans}=await import('./planos.js?v=3d');
+   const measures=planMeasures();
+   download(createPlans(measures,hardware,capturePlanViews(measures)),'buzon-planos.pdf','application/pdf');
+   status.textContent='PDF listo con ocho láminas, incluidas tres vistas 3D acotadas.';
   }catch(error){
    console.error(error);
    status.textContent='No se pudo generar el PDF. Vuelve a pulsar Descargar planos PDF.';
@@ -1053,7 +1056,215 @@ function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.
    button.disabled=false;
   }
  };
- $('snapshot').onclick=()=>{renderScene();const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='buzon-v13-vista.png';a.click();};
+ $('snapshot').onclick=()=>{
+  try{
+   const measures=planMeasures();
+   downloadPlanImage(measures,capturePlanViews(measures));
+  }catch(error){
+   console.error(error);
+   $('pdfStatus').textContent='No se pudo generar la imagen 3D. Vuelve a intentarlo.';
+  }
+ };
+}
+function capturePlanViews(measures){
+ const {openingW,openingH,entryY,wallD,frameW,boxD,boxFloor,boxTop,lidW,lidH,tongueL,tongueW}=measures;
+ const half=openingW/2,low=entryY,high=low+openingH,front=wallD/2;
+ const outerHalf=half+cabinetWallThickness,boxFront=-front-dockingGap,boxBack=boxFront-boxD;
+ const fixed=pivot.parent.clone(false);
+ for(const child of pivot.parent.children){
+  if(child===guideGroup)continue;
+  const copy=child.clone();
+  if(child===pivot)copy.rotation.x=0;
+  fixed.add(copy);
+ }
+ const lid=fixed.getObjectByName(pivot.name);
+ const deposit=cabinet.clone(false);
+ deposit.position.z=0;
+ for(const child of cabinet.children){
+  if(child.name.startsWith('Cota · ') || child.name.startsWith('Entrega almacenada '))continue;
+  const copy=child.clone();
+  if(child===access)copy.rotation.y=0;
+  deposit.add(copy);
+ }
+ for(const part of ['Piso deposito','Techo deposito','Lateral deposito izq','Lateral deposito der','Puerta interior opaca']){
+  deposit.getObjectByName(part).material=mat.box;
+ }
+ deposit.traverse(part=>{
+  if(part.name==='Leva móvil')part.rotation.x=0;
+  if(part.name==='Cubierta del cierre')part.visible=true;
+  if(part.name==='Leva de bloqueo de la puerta')part.rotation.z=0;
+ });
+ fixed.traverse(part=>{if(part.name==='Oreja exterior del receptor')part.visible=true;});
+
+ const model=new THREE.Group();
+ model.add(fixed,deposit);
+ const side=half+frameW+Math.max(16,openingW*.12);
+ const wall=makeWall(-side,side,high+frameW+20,openingW+2*frameThickness,low,high+frameThickness,wallD,mat.wallCut);
+ model.add(wall);
+ const preview=new THREE.Scene();
+ preview.background=new THREE.Color(0xf6f8fa);
+ for(const child of scene.children)if(child.isLight)preview.add(child.clone());
+ preview.add(model);
+ const specs=[
+  {
+   direction:[.58,.31,1],
+   marks:[
+    ['Ancho',openingW,[-half,high,front],[half,high,front],[0,-96]],
+    ['Alto',openingH,[-half,high,front],[-half,low,front],[-136,0]],
+    ['Entrada',low,[-half,low,front],[-half,0,front],[-136,0]],
+    ['Muro',wallD,[half,high,front],[half,high,-front],[148,-74]]
+   ]
+  },
+  {
+   direction:[.83,.38,-1],
+   marks:[
+    ['Ancho interior',openingW,[-half,boxTop,boxBack],[half,boxTop,boxBack],[0,-92]],
+    ['Profundidad',boxD,[outerHalf,boxFloor,boxBack],[outerHalf,boxFloor,boxFront],[-84,64]],
+    ['Total con ruedas',boxTop,[-outerHalf,boxTop,boxBack],[-outerHalf,0,boxBack],[112,0]]
+   ]
+  },
+  {
+   direction:[1,.39,.44],
+   open:true,
+   marks:[
+    ['Alto de tapa',lidH,[lidW/2,hingeY,hingeZ],[lidW/2,hingeY,hingeZ+lidH],[-35,105]],
+    ['Largo de pestaña',tongueL,[tongueW/2,hingeY,hingeZ],[tongueW/2,hingeY,hingeZ-tongueL],[56,108]],
+    ['Eje',tongueW,[-tongueW/2,hingeY,hingeZ],[tongueW/2,hingeY,hingeZ],[370,-200]]
+   ]
+  }
+ ];
+ const width=1440,height=920;
+ const savedSize=renderer.getSize(new THREE.Vector2()),savedRatio=renderer.getPixelRatio();
+ try{
+  renderer.setPixelRatio(1);
+  renderer.setSize(width,height,false);
+  return specs.map(({direction,marks,open=false})=>{
+   lid.rotation.x=open?PI/2:0;
+   deposit.visible=!open;
+   wall.visible=!open;
+   model.updateMatrixWorld(true);
+   const bounds=new THREE.Box3().setFromObject(open?fixed:model);
+   const center=bounds.getCenter(new THREE.Vector3());
+   const size=bounds.getSize(new THREE.Vector3());
+   const view=new THREE.OrthographicCamera(-1,1,1,-1,.1,2200);
+   view.position.fromArray(direction).normalize().multiplyScalar(800).add(center);
+   view.lookAt(center);
+   view.updateMatrixWorld();
+   const right=new THREE.Vector3(),up=new THREE.Vector3(),back=new THREE.Vector3();
+   view.matrixWorld.extractBasis(right,up,back);
+   const projectedSpan=axis=>Math.abs(axis.x)*size.x+Math.abs(axis.y)*size.y+Math.abs(axis.z)*size.z;
+   const unitsPerPixel=Math.max(projectedSpan(right)/(width-380),projectedSpan(up)/(height-242));
+   view.left=-width*unitsPerPixel/2;view.right=-view.left;
+   view.top=height*unitsPerPixel/2;view.bottom=-view.top;
+   view.updateProjectionMatrix();
+   renderer.render(preview,view);
+   const canvas=document.createElement('canvas');
+   canvas.width=width;canvas.height=height;
+   const ctx=canvas.getContext('2d');
+   ctx.drawImage(renderer.domElement,0,0);
+   drawPlanDimensions(ctx,view,marks);
+   return canvas;
+  });
+ }finally{
+  wall.geometry.dispose();
+  renderer.setPixelRatio(savedRatio);
+  renderer.setSize(savedSize.x,savedSize.y,false);
+  renderScene();
+ }
+}
+function drawPlanDimensions(ctx,view,marks){
+ const {width,height}=ctx.canvas;
+ const project=coordinates=>{
+  const point=new THREE.Vector3(...coordinates).project(view);
+  return [(point.x+1)*width/2,(1-point.y)*height/2];
+ };
+ const ink='#135b53';
+ ctx.font='700 29px system-ui, sans-serif';
+ ctx.textAlign='center';
+ ctx.textBaseline='middle';
+ ctx.fillStyle=ink;
+ for(const [label,value,start,end,[dx,dy]] of marks){
+  const [x1,y1]=project(start),[x2,y2]=project(end);
+  const ax=x1+dx,ay=y1+dy,bx=x2+dx,by=y2+dy;
+  ctx.strokeStyle='#4b8981';
+  ctx.lineWidth=1.6;
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);ctx.lineTo(ax,ay);
+  ctx.moveTo(x2,y2);ctx.lineTo(bx,by);
+  ctx.stroke();
+  ctx.strokeStyle=ink;
+  ctx.lineWidth=2.4;
+  ctx.beginPath();
+  ctx.moveTo(ax,ay);ctx.lineTo(bx,by);
+  const length=Math.hypot(bx-ax,by-ay);
+  const tx=(bx-ax)/length,ty=(by-ay)/length;
+  for(const [x,y] of [[ax,ay],[bx,by]]){
+   ctx.moveTo(x-5*(tx-ty),y-5*(ty+tx));
+   ctx.lineTo(x+5*(tx-ty),y+5*(ty+tx));
+  }
+  ctx.stroke();
+  const caption=label+' '+dimensionFormat.format(value)+' cm';
+  const captionWidth=ctx.measureText(caption).width;
+  const side=Math.sign(-ty*dx+tx*dy)||1;
+  const clearance=Math.abs(ty)*captionWidth/2+Math.abs(tx)*15+7;
+  const x=THREE.MathUtils.clamp((ax+bx)/2-ty*side*clearance,captionWidth/2+12,width-captionWidth/2-12);
+  const y=THREE.MathUtils.clamp((ay+by)/2+tx*side*clearance,24,height-24);
+  ctx.fillText(caption,x,y);
+ }
+}
+
+function downloadPlanImage(measures,views){
+ const [{width,height}]=views;
+ const sheet=document.createElement('canvas');
+ const margin=62,gap=36,titleBand=68,header=145;
+ sheet.width=2*(margin+width)+gap;
+ sheet.height=header+2*(height+titleBand)+gap+margin;
+ const ctx=sheet.getContext('2d');
+ ctx.fillStyle='#ffffff';
+ ctx.fillRect(0,0,sheet.width,sheet.height);
+ ctx.textBaseline='middle';
+ ctx.fillStyle='#233543';
+ ctx.font='700 59px system-ui, sans-serif';
+ ctx.fillText('Buzón de paquetes',margin,59);
+ ctx.font='400 31px system-ui, sans-serif';
+ ctx.fillText('Tres vistas 3D acotadas · Medidas en centímetros',margin,111);
+ const titles=['01  Vista exterior','02  Vista interior','03  Mecanismo con tapa abierta'];
+ views.forEach((view,i)=>{
+  const x=margin+i%2*(width+gap),y=header+Math.floor(i/2)*(height+titleBand+gap);
+  ctx.fillStyle='#126b61';
+  ctx.font='700 40px system-ui, sans-serif';
+  ctx.fillText(titles[i],x,y+titleBand/2);
+  ctx.drawImage(view,x,y+titleBand);
+ });
+ const notesX=margin+width+gap,notesY=header+height+titleBand+gap;
+ ctx.fillStyle='#126b61';
+ ctx.font='700 40px system-ui, sans-serif';
+ ctx.fillText('Medidas principales',notesX,notesY+titleBand/2);
+ ctx.fillStyle='#f6f8fa';
+ ctx.fillRect(notesX,notesY+titleBand,width,height);
+ const format=value=>dimensionFormat.format(value);
+ const rows=[
+  ['Abertura',format(measures.openingW)+' × '+format(measures.openingH)+' cm'],
+  ['Altura de entrada',format(measures.entryY)+' cm'],
+  ['Espesor del muro',format(measures.wallD)+' cm'],
+  ['Profundidad del depósito',format(measures.boxD)+' cm'],
+  ['Altura total con ruedas',format(measures.boxTop)+' cm'],
+  ['Pestaña (ancho × largo)',format(measures.tongueW)+' × '+format(measures.tongueL)+' cm']
+ ];
+ rows.forEach(([label,value],i)=>{
+  const y=notesY+titleBand+88+i*117;
+  ctx.fillStyle='#506677';
+  ctx.font='400 34px system-ui, sans-serif';
+  ctx.fillText(label,notesX+74,y);
+  ctx.fillStyle='#233543';
+  ctx.font='700 45px system-ui, sans-serif';
+  ctx.fillText(value,notesX+74,y+50);
+ });
+ ctx.font='400 32px system-ui, sans-serif';
+ ctx.fillText('Perspectivas sin escala.',notesX+74,notesY+titleBand+835);
+ sheet.toBlob(blob=>{
+  if(blob)download(blob,'buzon-vistas-3d.png','image/png');
+ },'image/png');
 }
 function download(text,name,type){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
 function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;viewportHeight=h;camera.aspect=w/h;camera.fov=w<480?51:44;camera.updateProjectionMatrix();renderer.setSize(w,h);buildDimensions();frameFocusedView();}
