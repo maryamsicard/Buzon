@@ -14,6 +14,40 @@
 .package-panel{margin-top:11px;padding:13px;border:1px solid #426778;border-radius:11px;background:#1c3040}.package-panel .gridfields{margin:9px 0}.package-panel .gridfields label{font-weight:600}.package-panel .buttons button{font-size:11px}.amazon-catalog{margin:12px 0;padding:10px;border-radius:8px;background:#142536;border:1px solid #426478}
 .amazon-catalog label{display:block;margin:0 0 8px;font-size:12px}
 .amazon-catalog select{width:100%;max-width:100%;background:#101c29;color:#e4f7f3;border:1px solid #5a7a8a;border-radius:7px;padding:10px 8px;cursor:pointer}
+
+/* V14 · Estudio luminoso en gris muy tenue: el modelo y su mecanismo quedan intactos */
+:root{color-scheme:light;--bg:#edf1f5;--panel:#ffffff;--edge:#d6e0e8;--soft:#50677a;--mint:#126b61;--txt:#263645}
+body{background:var(--bg);color:var(--txt)}
+header{background:#fff;border-color:#d6e0e8;box-shadow:0 1px 3px #2e44510b}
+header small,.muted,.muted2,.tiny,.legend{color:#566d7d}
+.sidebar{background:#fff;border-color:#d6e0e8}
+.sidebar h2{color:#526b7b}
+button{background:#edf3f6;color:#243746;border-color:#c8d6df}
+button:hover{background:#dcebf0}
+.primary{background:#136f62;color:#fff;border-color:#136f62}
+.primary:hover{background:#0f5a50}
+.active{background:#d7efe9;color:#105b50;border-color:#62a998}
+.pill{color:#166a5e;border-color:#a1d1c6;background:#f1faf7}
+.card{background:#f0f7f8;color:#243b48;border-left-color:#269b89}
+.warning{border-left-color:#c98731}
+.gridfields label,.check{color:#364f61}
+.gridfields input,.amazon-catalog select{background:#fff;color:#213a48;border-color:#bacbd6}
+.divline{background:#d9e3e9}
+.param-section{background:#f9fbfc;border-color:#d7e2ea}
+.param-head{background:#eef4f7;border-color:#d8e4ea}
+.param-head strong{color:#294253}
+.param-head span,.param-hint{color:#597383}
+.package-panel{background:#f5f9fb;border-color:#c8dbe4}
+.amazon-catalog{background:#eaf2f6;border-color:#cfdee7}
+.viewport{background:radial-gradient(ellipse at 45% 42%,#ffffff 0%,#f1f4f7 70%,#e6ebf0 100%)}
+.overlay{background:#fffffff0;border-color:#d5e0e8;box-shadow:0 4px 15px #455c7014}
+.overlay strong{color:#21695e}
+.overlay p{color:#445d6f}
+.corner{background:#ffffffe6;color:#526879;border:1px solid #d7e1e8}
+.footer{background:linear-gradient(transparent,#f1f4f7f2 28%,#f1f4f7 95%)}
+.footer .row,.legend,.tiny{color:#4c6678}
+.status{color:#294253}
+.ok{color:#15745f}.bad{color:#946018}
 </style></head><body>
 <header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V11 · catálogo Amazon y ruedas industriales · unidades en cm · unidades en cm</small></div><span class="pill">Modelo conceptual editable</span></header>
 <main><aside class="sidebar">
@@ -82,7 +116,7 @@ const mat={wall:new THREE.MeshStandardMaterial({color:0x8893a1,roughness:1}),fra
 function meshBox(parent,w,h,d,x,y,z,m,name=''){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.name=name;parent.add(o);return o}
 function cylinder(parent,r,len,x,y,z,m){const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,20),m);o.position.set(x,y,z);o.rotation.z=PI/2;parent.add(o);return o;}
 function addLine(parent,points,color=0x80d5f1){const geo=new THREE.BufferGeometry().setFromPoints(points);const line=new THREE.Line(geo,new THREE.LineDashedMaterial({color,dashSize:5,gapSize:2}));line.computeLineDistances();parent.add(line);return line;}
-function init(){scene=new THREE.Scene();scene.background=new THREE.Color(0x111b29);camera=new THREE.PerspectiveCamera(44,1,.1,2200);camera.position.set(260,200,310);renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setClearColor(0x111b29);$('canvas').appendChild(renderer.domElement);orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.target.set(0,115,0);const amb=new THREE.AmbientLight(0xffffff,.76);scene.add(amb);const sun=new THREE.DirectionalLight(0xffffff,1.4);sun.position.set(180,350,250);scene.add(sun);const fill=new THREE.DirectionalLight(0x93b6ff,.48);fill.position.set(-130,280,-220);scene.add(fill);const grid=new THREE.GridHelper(650,26,0x3f5062,0x263443);grid.position.y=0;scene.add(grid);}
+function init(){scene=new THREE.Scene();scene.background=new THREE.Color(0xf1f4f7);camera=new THREE.PerspectiveCamera(44,1,.1,2200);camera.position.set(260,200,310);renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setClearColor(0xf1f4f7);$('canvas').appendChild(renderer.domElement);orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.target.set(0,115,0);const amb=new THREE.AmbientLight(0xffffff,.76);scene.add(amb);const sun=new THREE.DirectionalLight(0xffffff,1.4);sun.position.set(180,350,250);scene.add(sun);const fill=new THREE.DirectionalLight(0x93b6ff,.48);fill.position.set(-130,280,-220);scene.add(fill);const grid=new THREE.GridHelper(650,26,0xc3ccd4,0xdce3e9);grid.position.y=0;scene.add(grid);}
 function initAmazonCatalog(){
  const sel=$('amazonBox');
  const groups=[['Pequeñas · hasta 40 cm',0,40],['Medianas · más de 40 a 60 cm',40,60],
