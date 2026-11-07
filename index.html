@@ -228,6 +228,7 @@ const mat={wall:new THREE.MeshStandardMaterial({color:0x8893a1,roughness:1}),
  brake:new THREE.MeshStandardMaterial({color:0xd68a42,metalness:.35,roughness:.55}),
  latchCam:new THREE.MeshStandardMaterial({color:0x238479,metalness:.38,roughness:.38}),
  latchSteel:new THREE.MeshStandardMaterial({color:0xb5c4cc,metalness:.48,roughness:.37})};
+const facadeEaveY=226;
 const facadeMat={
  plaster:new THREE.MeshStandardMaterial({color:0xd8c7ac,roughness:1}),
  cutPlaster:new THREE.MeshStandardMaterial({color:0xd8c7ac,roughness:1,transparent:true,opacity:.32}),
@@ -502,7 +503,7 @@ function addTileRoof(group,left,right,front){
    const z=THREE.MathUtils.lerp(back,eave,Math.min(row,slopeSteps)/slopeSteps);
    const wave=2.9*(1-Math.cos(2*PI*waves*(x/width+.5)));
    const lip=row>slopeSteps?1.6:0;
-   points.setXYZ(i,x,227+(44-z)*.31+wave+lift-lip,z);
+   points.setXYZ(i,x,facadeEaveY+1+(44-z)*.31+wave+lift-lip,z);
   }
   geometry.computeVertexNormals();
   const course=new THREE.Mesh(geometry,facadeMat.tile);
@@ -532,14 +533,12 @@ function buildHouseFacade(left,right,wallHeight,front,openingTop){
  pull.name='Tirador de la puerta peatonal';
  pull.position.set(shift-98,102,front-6.5);
  group.add(pull);
- box('Dintel',facadeMat.plaster,438,40,16,-287,232,-23);
- box('Remate alto',facadeMat.plaster,64,30,20,-72,257,-23);
  // Leave room for the adjustable lid and frame if the opening reaches the canopy.
- const canopyEdge=openingTop>198?-68:40;
- box('Techo volado',facadeMat.cream,512+canopyEdge,14,76,(canopyEdge-512)/2,219,-2);
+ const canopyEdge=openingTop>198?-68:right-shift+3;
+ box('Techo volado',facadeMat.cream,512+canopyEdge,14,76,(canopyEdge-512)/2,facadeEaveY-7,-2);
  box('Borde del techo',facadeMat.cream,513.5+canopyEdge,11.5,7,(canopyEdge-513.5)/2,216,37);
  addTileRoof(group,shift-514,shift+canopyEdge,front);
- const sidewalkLeft=-542+shift,sidewalkRight=Math.max(258+shift,right+24);
+ const sidewalkLeft=-542+shift,sidewalkRight=right+24;
  const sidewalkWidth=sidewalkRight-sidewalkLeft;
  const sidewalkCenter=(sidewalkLeft+sidewalkRight)/2-shift;
  box('Banqueta',facadeMat.concrete,sidewalkWidth,15,120,sidewalkCenter,-7.35,60);
@@ -724,8 +723,8 @@ function build(){
  const houseFacade=showHouseFacade();
  sceneGrid.visible=!houseFacade || currentView!=='front';
  const left=houseFacade?-Math.max(68,W/2+F+17):-span/2;
- const right=houseFacade?Math.max(210,span/2):span/2;
- const height=houseFacade?Math.max(290,wallTop):wallTop;
+ const right=houseFacade?W/2+F+28:span/2;
+ const height=houseFacade?Math.max(facadeEaveY,high+F+20):wallTop;
  const solid=houseFacade?facadeMat.plaster:mat.wall;
  const transparent=houseFacade?facadeMat.cutPlaster:mat.wallCut;
  root.add(makeWall(left,right,height,recessW,low,recessTop,D,cut?transparent:solid));
