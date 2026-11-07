@@ -48,6 +48,7 @@ button:hover{background:#dcebf0}
 .footer .row,.legend,.tiny{color:#4c6678}
 .status{color:#294253}
 .ok{color:#15745f}.bad{color:#946018}
+.gridfields input[readonly]{background:#eef4f7}.buttons button:disabled{opacity:.55;cursor:default}
 </style></head><body>
 <header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V11 · catálogo Amazon y ruedas industriales · unidades en cm · unidades en cm</small></div><span class="pill">Modelo conceptual editable</span></header>
 <main><aside class="sidebar">
@@ -55,6 +56,11 @@ button:hover{background:#dcebf0}
 <h2>Animación y movimiento</h2>
 <div class="buttons"><button class="primary" id="play">▶ Reproducir entrega</button><button id="pause">Ⅱ Pausar</button><button id="reset">↺ Reiniciar</button></div>
 <div class="buttons" style="margin-top:8px"><button id="open">Abrir tapa</button><button id="place">Colocar caja</button><button id="close">Cerrar y depositar</button><button id="access">Abrir puerta interior</button></div>
+<h2>Depósito móvil sobre ruedas</h2>
+<div class="row"><label for="cabinetOffset">Separación del muro</label><output id="cabinetOffsetText" class="status" for="cabinetOffset">0 cm</output></div>
+<input class="range" type="range" id="cabinetOffset" min="0" max="120" step="1" value="0">
+<div class="buttons"><button id="rollBack">Retirar 60 cm</button><button id="dock">Volver al muro</button></div>
+<p class="muted2">Se desplazan el gabinete, la puerta, las ruedas y las cajas guardadas. El marco y el mecanismo de entrada permanecen montados en el muro. Acerca el depósito para recibir cajas.</p>
 <h2>Varias entregas · cajas de distintos tamaños</h2>
 <div class="package-panel">
 <div class="row"><strong>Medidas de la siguiente caja</strong><span class="pill">cm</span></div>
@@ -78,36 +84,44 @@ button:hover{background:#dcebf0}
 <label class="check"><input id="ghost" type="checkbox" checked> Gabinete semitransparente</label>
 <label class="check"><input id="guide" type="checkbox" checked> Mostrar eje y recorrido ilustrativo</label>
 <div class="divline"></div>
-<div class="row"><strong>Dimensiones por componente</strong><span class="pill">cm</span></div><p class="muted2">Cada grupo controla una parte concreta. Las ruedas están debajo del buzón y no alteran tapa ni pestaña. La altura sobre el piso se deja editable porque, aunque depende sobre todo de las ruedas, también cambia según la placa, el soporte y el montaje real.</p>
+<div class="row"><strong>Dimensiones por componente</strong><span class="pill">cm</span></div><p class="muted2">El ancho interior y la altura del depósito se calculan a partir de la abertura. La profundidad se puede ajustar. Las ruedas determinan la altura de la base sobre el piso.</p>
 <div id="dimensions"></div>
 <div class="card" id="checks" style="margin-top:10px">Preparando comprobaciones...</div>
 <h2>Guardar y exportar</h2><div class="buttons"><button id="save">Guardar medidas (.json)</button><button id="load">Cargar medidas</button><button id="snapshot">Imagen PNG</button></div><input id="loadfile" type="file" accept=".json,application/json" hidden>
 <p class="muted2" style="margin-top:20px">⚠️ La ubicación final y la acumulación de cajas son geométricas y aproximadas; NO constituyen una simulación dinámica de gravedad, choques o fricción. Las comprobaciones verifican límites geométricos básicos y NO garantizan que la caja deslice, caiga o permita el retorno. Antes de fabricar necesitaremos evaluar colisiones 3D, masa, fricción, gravedad, holguras, cargas, seguridad y hacer un prototipo físico. El plano de fabricación queda pendiente.</p>
-</aside><section class="viewport"><div id="canvas"></div><div class="overlay"><strong id="viewTitle">Vista exterior</strong><p id="viewDescription">Arrastra con el mouse para rotar y usa la rueda para acercarte. La tapa está remetida hasta la cara interior del muro de 20 cm.</p></div><div class="corner">Calle (+Z) · Casa (−Z)</div><div class="footer"><div class="row"><strong id="phase">Tapa cerrada, depósito oculto</strong><span id="clock" class="muted">0.0 / 12.0 s</span></div><input type="range" min="0" max="12" step="0.01" id="timeline" value="0"><div class="legend">Tapa y pestaña son una sola pieza en L invertida en vista lateral, unidas por un mismo eje. La caja interior permanece cerrada hasta abrir su puerta de recogida.</div></div></section></main>
+</aside><section class="viewport"><div id="canvas"></div><div class="overlay"><strong id="viewTitle">Vista exterior</strong><p id="viewDescription">Arrastra con el mouse para rotar y usa la rueda para acercarte. La tapa está remetida hasta la cara interior del muro de 20 cm.</p></div><div class="corner">Calle (+Z) · Casa (−Z)</div><div class="footer"><div class="row"><strong id="phase">Tapa cerrada, depósito oculto</strong><span id="clock" class="muted">0.0 / 12.0 s</span></div><input type="range" min="0" max="12" step="0.01" id="timeline" value="0"><div class="legend">El conjunto del muro incluye marco, eje, tapa y pestaña. El depósito con ruedas se retira hacia el interior para separarlo del conjunto fijo.</div></div></section></main>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 const $=id=>document.getElementById(id);const PI=Math.PI;
-const defaults={openingW:80,openingH:55,wallD:20,entryY:100,tongueL:30,tongueW:78.6,tongueT:.3,boxW:90,boxD:60,boxH:155,boxFloor:10,frameW:5,gap:.7,wheelD:7.5};
+const defaults={openingW:80,openingH:55,wallD:20,entryY:100,tongueL:30,tongueW:78.6,tongueT:.3,boxD:60,frameW:5,gap:.7,wheelD:7.5};
+const roofAllowance=10;
 const dimGroups=[
  {title:'01 · Muro y abertura de entrada',description:'Hueco por donde entra el paquete y posición respecto al piso.',
   fields:[['openingW','Ancho de abertura',45,120,'Medida horizontal del hueco exterior.'],['openingH','Alto de abertura',35,100,'Medida vertical del hueco exterior.'],['entryY','Altura de entrada desde el piso',65,180,'Desde el piso hasta el borde inferior de la abertura.'],['wallD','Espesor del muro',20,35,'Profundidad de la barda; referencia actual: 20 cm.']]},
- {title:'02 · Marco metálico y tapa exterior',description:'El marco cubre el canto de la abertura y remata ambas caras del muro.',
+ {title:'02 · Conjunto fijo del muro',description:'El marco abraza el muro y lleva montados el eje, la tapa y la pestaña basculante.',
   fields:[['frameW','Ancho visible del marco',2,9,'Ancho del marco visible en ambas caras del muro.'],['gap','Holgura perimetral de tapa',.3,2,'Separación entre tapa y abertura por cada lado.']]},
- {title:'03 · Pestaña interior (pieza gris)',description:'La pestaña y la tapa exterior giran juntas como un solo conjunto basculante; estas medidas solo modifican la pestaña.',
-  fields:[['tongueL','Longitud de pestaña',10,100,'Distancia desde el eje hasta su extremo interior.'],['tongueW','Ancho de pestaña',20,115,'Medida horizontal de izquierda a derecha.'],['tongueT','Espesor de pestaña',.2,2,'Grosor de la lámina de la pestaña.']]},
- {title:'04 · Buzón (Depósito Interior)',description:'Caja cerrada donde se almacenan los paquetes, con puerta de recogida desde la casa.',
-  fields:[['boxW','Ancho estándar interior del buzón',60,150,'De lado a lado; valor inicial sugerido: 90 cm.'],['boxH','Altura interior del buzón',70,250,'Desde la base hasta la parte superior del buzón. Valor inicial: 155 cm.'],['boxD','Profundidad interior del buzón',55,170,'Desde la pared interior hacia el fondo del buzón. Valor inicial: 60 cm.'],['boxFloor','Altura del buzón sobre el piso',0,65,'Valor inicial: 10 cm. Suele depender sobre todo de la altura real de las ruedas y su montaje.']]}
+ {title:'03 · Pestaña interior (pieza gris)',description:'La pestaña gira con la tapa sobre el eje del marco. Su ancho efectivo se limita al ancho de la tapa.',
+  fields:[['tongueL','Longitud de pestaña',10,100,'Distancia desde el eje hasta su extremo interior.'],['tongueW','Ancho máximo de pestaña',20,115,'Ancho deseado. Si la tapa es más estrecha, la pestaña se reduce con ella.'],['tongueT','Espesor de pestaña',.2,2,'Grosor de la lámina de la pestaña.']]},
+ {title:'04 · Depósito móvil',description:'El gabinete, la puerta y las ruedas forman el segundo conjunto.',
+  fields:[
+   ['boxW','Ancho interior calculado',null,null,'Igual al ancho de la abertura.'],
+   ['boxH','Altura del gabinete calculada',null,null,'Altura hasta el techo, medida desde la base sobre las ruedas.'],
+   ['boxTop','Altura total desde el piso',null,null,'Altura de entrada más alto de abertura más '+roofAllowance+' cm.'],
+   ['boxD','Profundidad del depósito',55,170,'Medida independiente, hacia el interior de la casa.'],
+   ['boxFloor','Altura de la base sobre el piso',null,null,'Se ajusta a la altura de montaje de las ruedas.']
+  ]}
  ,{title:'05 · Ruedas del depósito interior',description:'Cuatro rodajas industriales bajo la caja negra. Dos incluyen freno en este modelo.',
   fields:[['wheelD','Diámetro de rueda',5,10,'Opciones comunes: 5 cm (2″), 7.5 cm (3″) y 10 cm (4″). Altura del conjunto depende del diámetro y del fabricante.']]}
 ];
-const dimDefs=dimGroups.flatMap(group=>group.fields.map(f=>f.slice(0,4)));
+const dimDefs=dimGroups.flatMap(group=>group.fields).filter(field=>field[2]!==null);
 const amazonBoxes=[["0A0",23.5,16.5,5.7],["A1",25.4,17.8,7.6],["A3",25.4,17.8,13.3],["W01",25.4,20.3,16.5],["A0",26,17.8,5.7],["1A1",29.2,21.6,10.8],["A4",30.5,21.6,17.8],["BM2",30.5,24.1,6.3],["Z1",30.5,22.9,10.2],["1A3",31.8,24.8,8.3],["1AE",33,25.4,21],["1A5",34.3,27.9,12.1],["1AC",34.3,28.6,24.8],["1A9",35.6,31.8,24.1],["1A7",36.8,20.3,18.4],["1B2",38.1,30.5,7.6],["Z4",40.6,31.1,15.9],["B0",43.2,27.9,27.9],["1B4",45.1,36.2,21],["1B9",45.7,22.9,17.8],["1BA",48.3,31.1,28.6],["C1",48.3,33,10.2],["C4",48.3,33.7,30.5],["1BB",48.9,37.5,31.1],["2A0",50.8,40.6,17.8],["2A5",50.8,27.9,10.8],["P2",52.7,45.1,39.4],["2A6",53.3,43.2,26.7],["P1",54,38.7,15.9],["1BG",54.6,45.7,13.3],["2BB",55.9,41.9,35.6],["B05",55.9,38.1,12.7],["D4",55.9,45.7,30.5],["S5",56.5,46.4,31.1],["2A7",61,43.8,10.8],["B14",61,45.7,20.3],["P5",65.4,52.7,41.9],["2A8",66,48.3,22.9],["F3",66,48.3,22.2],["P4",66,41.3,18.4],["P9",69.8,57.1,20.3],["B11",71.1,40.6,15.2],["P7",71.1,49.5,21],["3A1",78.7,52.1,26.7],["Q2",86.4,55.9,34.3],["Q3",92.7,26.7,8.3],["Q4",94,50.8,7.6],["Q5",94,76.2,7.6],["Q6",94,73.7,7.6],["U0",101.6,30.5,23.5],["U3",101.6,26.7,9.5],["U5",101.6,50.8,35.6],["J7",102.9,13.3,13.3],["K89",113,25.4,25.4],["J7A",133.3,13.3,13.3],["CB4",147.3,30.5,16.5]];
 const packDefs=[['w','Ancho',5,170],['h','Alto',3,120],['d','Fondo',5,170]];
 const PACKS={small:{w:25,h:15,d:12},medium:{w:40,h:18,d:18},large:{w:60,h:40,d:40}};
 let p={...defaults},pack={...PACKS.medium},theta=0,stage='none',progress=0,accessOpen=false,cut=true,ghost=true,guides=true,time=0,speed=1,playing=false,prev=performance.now();
-let scene,camera,renderer,orbit,root,pivot,parcel,access,guideGroup,camTween=null,boxCenterZ=0,boxTop=0,hingeZ=0,hingeY=0,boxBack=0,boxFront=0;
+let scene,camera,renderer,orbit,root,cabinet,pivot,parcel,access,guideGroup,deliveryGuide,camTween=null,boxCenterZ=0,hingeZ=0,hingeY=0;
+let cabinetOffset=0,rollingMeshes=[];
 let stored=[],deliveryCommitted=false,deliverySlot=null,deliveryBlocked=false,deliveryReason='',deliveryOrientation=0;
 const mat={wall:new THREE.MeshStandardMaterial({color:0x8893a1,roughness:1}),frame:new THREE.MeshStandardMaterial({color:0x222a34,metalness:.68,roughness:.36}),lid:new THREE.MeshStandardMaterial({color:0x323e4b,metalness:.55,roughness:.42,side:THREE.DoubleSide}),tongue:new THREE.MeshStandardMaterial({color:0x7d929f,metalness:.3,roughness:.5,side:THREE.DoubleSide}),box:new THREE.MeshStandardMaterial({color:0x252e39,metalness:.35,roughness:.56,side:THREE.DoubleSide}),inner:new THREE.MeshStandardMaterial({color:0x101923,roughness:.85,side:THREE.DoubleSide}),handle:new THREE.MeshStandardMaterial({color:0xc3d4df,metalness:.83,roughness:.21}),pkg:new THREE.MeshStandardMaterial({color:0xbf813f,roughness:.96}),tape:new THREE.MeshStandardMaterial({color:0xe9d6aa,roughness:.9}),hinge:new THREE.MeshStandardMaterial({color:0xd8a760,metalness:.55,roughness:.34}),ground:new THREE.MeshStandardMaterial({color:0x25303c,roughness:.96}),
  caster:new THREE.MeshStandardMaterial({color:0x9aaab8,metalness:.78,roughness:.3}),
@@ -170,17 +184,18 @@ function settingsUI(){
    const row=document.createElement('div');row.className='gridfields';
    const l=document.createElement('label');l.textContent=label+' (cm)';l.htmlFor='p_'+key;
    const n=document.createElement('input');n.type='number';n.id='p_'+key;
-   n.min=min;n.max=max;n.step=.1;n.value=p[key];n.title=hint;
-   n.addEventListener('change',()=>{
-    const val=Number(n.value);
-    const oldWheelD=p.wheelD;
-    p[key]=Number.isFinite(val)&&n.value.trim()!==''?Math.max(min,Math.min(max,val)):defaults[key];
-    n.value=p[key];
-    if(key==='wheelD' && Math.abs(p.boxFloor-wheelHeight(oldWheelD))<.25){
-      p.boxFloor=wheelHeight(p.wheelD);$('p_boxFloor').value=p.boxFloor;
-    }
-    refreshGeometry();
-   });
+   n.step=.1;n.title=hint;
+   if(min===null){
+    n.readOnly=true;
+   }else{
+    n.min=min;n.max=max;n.value=p[key];
+    n.addEventListener('change',()=>{
+     const val=Number(n.value);
+     p[key]=Number.isFinite(val)&&n.value.trim()!==''?Math.max(min,Math.min(max,val)):defaults[key];
+     n.value=p[key];
+     refreshGeometry();
+    });
+   }
    row.append(l,n);body.append(row);
    const help=document.createElement('p');help.className='param-hint';help.textContent=hint;body.append(help);
   }
@@ -196,6 +211,46 @@ function settingsUI(){
  }
 }
 function wheelHeight(d){return d<=5.25?6.9:d<=8.5?10:13;}
+function syncCabinetDimensions(){
+ p.boxW=p.openingW;
+ p.boxFloor=wheelHeight(p.wheelD);
+ p.boxTop=p.entryY+p.openingH+roofAllowance;
+ p.boxH=p.boxTop-p.boxFloor;
+ for(const key of ['boxW','boxFloor','boxTop','boxH'])$('p_'+key).value=Number(p[key].toFixed(2));
+}
+function tongueWidth(){return Math.min(p.tongueW,p.openingW-2*p.gap);}
+function positionCabinet(){
+ cabinet.position.z=-cabinetOffset;
+ const turn=-cabinetOffset/(p.wheelD/2);
+ for(const mesh of rollingMeshes)mesh.rotation.x=turn;
+ deliveryGuide.visible=cabinetOffset===0;
+}
+function updateCabinetControls(){
+ const separated=cabinetOffset>0;
+ $('cabinetOffset').value=cabinetOffset;
+ $('cabinetOffsetText').textContent=cabinetOffset+' cm';
+ $('dock').disabled=!separated;
+ for(const id of ['play','place','close','nextDelivery','timeline'])$(id).disabled=separated;
+}
+function moveCabinet(offset){
+ if(offset===cabinetOffset)return;
+ const wasDocked=cabinetOffset===0;
+ cabinetOffset=offset;
+ positionCabinet();
+ updateCabinetControls();
+ if(wasDocked || offset===0)prepareNext(true);
+ if(wasDocked)selectView('cut');
+ else if(document.querySelector('[data-view="cut"]').classList.contains('active'))frameCutView();
+}
+function frameCutView(){
+ const span=p.wallD+p.boxD+cabinetOffset;
+ const targetZ=-(p.boxD+cabinetOffset)/2;
+ const halfFov=THREE.MathUtils.degToRad(camera.fov/2);
+ const targetY=p.boxTop/2;
+ const distance=Math.max(355,(span/2+22)/(Math.tan(halfFov)*camera.aspect),(targetY+22)/Math.tan(halfFov));
+ orbit.target.set(0,targetY,targetZ);
+ camTween={from:camera.position.clone(),to:new THREE.Vector3(distance,targetY+50,targetZ+12),start:performance.now()};
+}
 function build(){
  if(root){scene.remove(root);root.traverse(o=>{if(o.geometry)o.geometry.dispose()});}
  root=new THREE.Group();scene.add(root);
@@ -207,39 +262,50 @@ function build(){
  meshBox(root,recessW,wallTop-recessTop,D,0,(wallTop+recessTop)/2,0,wallMat,'Muro sobre abertura');
  meshBox(root,recessW,low,D,0,low/2,0,wallMat,'Muro bajo abertura');
 
+ const wallAssembly=new THREE.Group();wallAssembly.name='01 · Conjunto fijo del muro';root.add(wallAssembly);
  // The liners sit flush in the wall recess, keeping the opening clear for the lid.
- meshBox(root,linerT,H,D,-W/2-linerT/2,low+H/2,0,mat.frame,'Canto izquierdo del marco');
- meshBox(root,linerT,H,D,W/2+linerT/2,low+H/2,0,mat.frame,'Canto derecho del marco');
- meshBox(root,recessW,linerT,D,0,high+linerT/2,0,mat.frame,'Canto superior del marco');
+ meshBox(wallAssembly,linerT,H,D,-W/2-linerT/2,low+H/2,0,mat.frame,'Canto izquierdo del marco');
+ meshBox(wallAssembly,linerT,H,D,W/2+linerT/2,low+H/2,0,mat.frame,'Canto derecho del marco');
+ meshBox(wallAssembly,recessW,linerT,D,0,high+linerT/2,0,mat.frame,'Canto superior del marco');
  // The existing sill forms the lower liner and supports the lid when open.
- meshBox(root,W,1,D,0,low+.5,0,mat.frame,'Apoyo en canto del muro');
+ meshBox(wallAssembly,W,1,D,0,low+.5,0,mat.frame,'Apoyo en canto del muro');
  for(const [face,z,depth] of [['exterior',front+.75,1.5],['interior',rear-linerT/2,linerT]]){
-  meshBox(root,W+2*F,F,depth,0,high+F/2,z,mat.frame,'Marco '+face+' superior');
-  meshBox(root,W+2*F,F,depth,0,low-F/2,z,mat.frame,'Marco '+face+' inferior');
-  meshBox(root,F,H,depth,-W/2-F/2,low+H/2,z,mat.frame,'Marco '+face+' izquierdo');
-  meshBox(root,F,H,depth,W/2+F/2,low+H/2,z,mat.frame,'Marco '+face+' derecho');
+  meshBox(wallAssembly,W+2*F,F,depth,0,high+F/2,z,mat.frame,'Marco '+face+' superior');
+  meshBox(wallAssembly,W+2*F,F,depth,0,low-F/2,z,mat.frame,'Marco '+face+' inferior');
+  meshBox(wallAssembly,F,H,depth,-W/2-F/2,low+H/2,z,mat.frame,'Marco '+face+' izquierdo');
+  meshBox(wallAssembly,F,H,depth,W/2+F/2,low+H/2,z,mat.frame,'Marco '+face+' derecho');
  }
  // SINGLE rigid moving assembly: one parent, a tall exterior leaf (+local Y), a tongue (-local Y), same axis.
  hingeZ=rear-1.3;hingeY=low+1.2;
- pivot=new THREE.Group();pivot.name='Tapa y pestaña — una pieza rígida';pivot.position.set(0,hingeY,hingeZ);root.add(pivot);
+ pivot=new THREE.Group();pivot.name='Tapa y pestaña — una pieza rígida';pivot.position.set(0,hingeY,hingeZ);wallAssembly.add(pivot);
  const lidW=W-2*p.gap,lidH=H-2*p.gap;
- const hingeWidth=Math.min(lidW,p.tongueW);
+ const hingeWidth=tongueWidth();
  meshBox(pivot,lidW,lidH,.5,0,lidH/2,0,mat.lid,'Tapa exterior');
- meshBox(pivot,p.tongueW,p.tongueL,p.tongueT,0,-p.tongueL/2,0,mat.tongue,'Pestaña interior solidaria (editable e independiente de dimensiones de tapa)');
+ meshBox(pivot,hingeWidth,p.tongueL,p.tongueT,0,-p.tongueL/2,0,mat.tongue,'Pestaña interior solidaria (editable e independiente de dimensiones de tapa)');
  // Shaft and hinges occupy the same origin.
- cylinder(root,.85,hingeWidth,0,hingeY,hingeZ,mat.hinge);
+ cylinder(wallAssembly,.85,hingeWidth,0,hingeY,hingeZ,mat.hinge);
+ // Fixed supports connect the ends of the axle to the interior rim, below the lid.
+ const bracketWidth=(W-hingeWidth)/2+1;
+ for(const side of [-1,1]){
+  const x=side*(hingeWidth+bracketWidth)/2;
+  meshBox(wallAssembly,bracketWidth,1,1.6,x,hingeY-.9,hingeZ+.6,mat.frame,'Soporte fijo del eje');
+ }
  for(const x of [-hingeWidth*.37,hingeWidth*.37]){const h=cylinder(pivot,1.7,5,x,0,0,mat.hinge);h.rotation.z=PI/2;}
  // Handle follows the exterior lid, visible when shut.
  meshBox(pivot,lidW*.33,.8,2,0,lidH*.78,2,mat.handle,'Manija de depósito');
- // Cabinet behind inner face of wall. Closed on all sides except its access door on room side.
- boxFront=rear-2;boxBack=boxFront-p.boxD;boxCenterZ=(boxFront+boxBack)/2;const bottom=p.boxFloor;boxTop=bottom+p.boxH;const boxH=p.boxH,T=1.4,BW=p.boxW,BD=p.boxD;
+ // The cabinet has an open wall-facing side and rolls into the house as one assembly.
+ cabinet=new THREE.Group();cabinet.name='02 · Depósito móvil';root.add(cabinet);
+ rollingMeshes=[];
+ const boxFront=rear-2,boxBack=boxFront-p.boxD;
+ boxCenterZ=(boxFront+boxBack)/2;
+ const bottom=p.boxFloor,boxTop=p.boxTop,boxH=p.boxH,T=1.4,BW=p.boxW+2*T,BD=p.boxD;
  const cabinetMat=(ghost||cut)?new THREE.MeshStandardMaterial({color:0x425469,roughness:.6,transparent:true,opacity:cut?.20:.24,depthWrite:false,side:THREE.DoubleSide}):mat.box;
- meshBox(root,BW,T,BD,0,bottom+T/2,boxCenterZ,cabinetMat,'Piso deposito');
- meshBox(root,BW,T,BD,0,boxTop-T/2,boxCenterZ,cabinetMat,'Techo deposito');
- meshBox(root,T,boxH,BD,-BW/2+T/2,(boxTop+bottom)/2,boxCenterZ,cabinetMat,'Lateral deposito izq');
- meshBox(root,T,boxH,BD,BW/2-T/2,(boxTop+bottom)/2,boxCenterZ,cabinetMat,'Lateral deposito der');
+ meshBox(cabinet,BW,T,BD,0,bottom+T/2,boxCenterZ,cabinetMat,'Piso deposito');
+ meshBox(cabinet,BW,T,BD,0,boxTop-T/2,boxCenterZ,cabinetMat,'Techo deposito');
+ meshBox(cabinet,T,boxH,BD,-BW/2+T/2,(boxTop+bottom)/2,boxCenterZ,cabinetMat,'Lateral deposito izq');
+ meshBox(cabinet,T,boxH,BD,BW/2-T/2,(boxTop+bottom)/2,boxCenterZ,cabinetMat,'Lateral deposito der');
  // Room-facing back door. Door hinge is on its left vertical side, opening towards the room.
- access=new THREE.Group();access.name='Puerta de recogida';access.position.set(-BW/2+.8,(boxTop+bottom)/2,boxBack-.8);root.add(access);
+ access=new THREE.Group();access.name='Puerta de recogida';access.position.set(-BW/2+.8,(boxTop+bottom)/2,boxBack-.8);cabinet.add(access);
  meshBox(access,BW-2,boxH-2,1.5,(BW-2)/2,0,0,(ghost||cut)?cabinetMat:mat.box,'Puerta interior opaca');
  const handle=meshBox(access,1.5,4,2.5,BW-11,0,-2,mat.handle,'Cerradura puerta interior');
  for(const yy of [-boxH*.3,boxH*.3])cylinder(access,1.2,7,0,yy,0,mat.handle).rotation.set(0,0,0);
@@ -247,15 +313,14 @@ function build(){
 
  // Four plate-mounted caster assemblies, centered under the closed deposit cabinet.
  // Diameter is nominal; total installation height is size-specific and indicative.
- const casterH=wheelHeight(p.wheelD);
  const casterRadius=p.wheelD/2,tyreWidth=Math.max(2.2,p.wheelD*.32);
- const wheelY=bottom-casterH+casterRadius;
+ const wheelY=casterRadius;
  const leftW=-BW/2+Math.max(7,p.wheelD*.75);
  const rightW=BW/2-Math.max(7,p.wheelD*.75);
  const nearZ=boxFront-Math.max(7,p.wheelD*.75);
  const farZ=boxBack+Math.max(7,p.wheelD*.75);
  for(const [i,x,z] of [[0,leftW,nearZ],[1,rightW,nearZ],[2,leftW,farZ],[3,rightW,farZ]]){
-  const wheelUnit=new THREE.Group();wheelUnit.name='Rodaja industrial '+(i+1);root.add(wheelUnit);
+  const wheelUnit=new THREE.Group();wheelUnit.name='Rodaja industrial '+(i+1);cabinet.add(wheelUnit);
   const plateW=Math.min(8,BW*.14),plateD=Math.min(8,BD*.14);
   meshBox(wheelUnit,plateW,.55,plateD,x,bottom-.27,z,mat.caster,'Placa de montaje');
   meshBox(wheelUnit,.7,Math.max(1,(bottom-.55)-(wheelY+.3)),2,x-tyreWidth*.65,(bottom-.55+wheelY)/2,z,mat.caster,'Horquilla izquierda');
@@ -264,18 +329,19 @@ function build(){
   tyre.rotation.z=Math.PI/2;tyre.position.set(x,wheelY,z);tyre.name='Rueda de poliuretano / goma';wheelUnit.add(tyre);
   const hub=new THREE.Mesh(new THREE.CylinderGeometry(casterRadius*.25,casterRadius*.25,tyreWidth+.3,16),mat.caster);
   hub.rotation.z=Math.PI/2;hub.position.set(x,wheelY,z);wheelUnit.add(hub);
+  rollingMeshes.push(tyre,hub);
   if(i<2)meshBox(wheelUnit,tyreWidth*.75,.6,2.4,x,wheelY+casterRadius*.9,z+casterRadius*.25,mat.brake,'Pedal de freno esquemático');
  }
 
- // The room-facing panel is intentionally opaque when shut: no view inside house through opening.
  parcel=new THREE.Group();root.add(parcel);parcel.name='Paquete de prueba';
  meshBox(parcel,pack.w,pack.h,pack.d,0,0,0,mat.pkg,'Paquete');meshBox(parcel,pack.w,.35,2,0,pack.h/2+.2,0,mat.tape,'Cinta');
  // Guides: revolve around hinge and show conceptual fall towards bottom of the opaque deposit.
- guideGroup=new THREE.Group();guideGroup.visible=guides;root.add(guideGroup);
+ guideGroup=new THREE.Group();guideGroup.visible=guides;wallAssembly.add(guideGroup);
  cylinder(guideGroup,1.65,hingeWidth,0,hingeY,hingeZ,new THREE.MeshBasicMaterial({color:0x9c601e}));
  const s=packageOnTongue();const target=packageStored();const a=new THREE.Vector3(0,low+pack.h/2+6,front+pack.d/2+18);
- addLine(guideGroup,[a,s,new THREE.Vector3(0,low-5,hingeZ-p.tongueL*.55),target],0x177689);
- setAngle(theta);updateParcel();renderStored();updateChecks();updateStoredStatus();
+ deliveryGuide=addLine(guideGroup,[a,s,new THREE.Vector3(0,low-5,hingeZ-p.tongueL*.55),target],0x177689);
+ positionCabinet();
+ setAngle(theta);updateParcel();stored.forEach(renderStoredPackage);updateChecks();updateStoredStatus();
 }
 function setAngle(a){theta=Math.max(0,Math.min(90,a));if(pivot)pivot.rotation.x=theta*PI/180;$('angle').value=theta;$('angleText').textContent=Math.round(theta)+'°';}
 function packageOnTongue(){const location=Math.min(p.tongueL*.55,Math.max(pack.d/2+3,8));const local=new THREE.Vector3(0,-location,-pack.h/2-.9);local.applyAxisAngle(new THREE.Vector3(1,0,0),theta*PI/180);return local.add(new THREE.Vector3(0,hingeY,hingeZ));}
@@ -283,7 +349,7 @@ function insideLimits(){
  const margin=3;
  return {xmin:-p.boxW/2+margin,xmax:p.boxW/2-margin,
          zmin:(-p.wallD/2-2-p.boxD)+margin,zmax:(-p.wallD/2-2)-margin,
-         floor:p.boxFloor+1.4,top:p.boxFloor+p.boxH-2};
+         floor:p.boxFloor+1.4,top:p.boxTop-2};
 }
 function overlaps2D(a,b){
  return Math.abs(a.x-b.x)*2 < a.w+b.w+1.5 && Math.abs(a.z-b.z)*2 < a.d+b.d+1.5;
@@ -320,17 +386,18 @@ function explainRejection(){
  if(!anyFit)return `No cabe con las orientaciones horizontales permitidas. Caja: ${pack.w} × ${pack.h} × ${pack.d} cm (ancho × alto × fondo). Espacio libre aproximado: ${w} × ${(b.top-b.floor).toFixed(1)} × ${d} cm. Prueba aumentar la profundidad del depósito o disminuir la caja.`;
  return 'El paquete cabe por dimensiones generales, pero no hay una posición libre compatible con las cajas ya almacenadas. Vacía el depósito o modifica sus dimensiones.';
 }
-function showDeliveryStatus(message,failed=false){const el=$('deliveryStatus');el.style.borderLeftColor=failed?'#c98731':'#269b89';el.innerHTML=message;}
+function showDeliveryStatus(message,failed=false){
+ const el=$('deliveryStatus');
+ el.style.borderLeftColor=failed?'#c98731':'#269b89';
+ el.innerHTML=cabinetOffset>0?'Depósito retirado. Acércalo al muro para recibir una caja.':message;
+}
 function packageStored(){return deliverySlot?new THREE.Vector3(deliverySlot.x,deliverySlot.y,deliverySlot.z):new THREE.Vector3(0,p.boxFloor+pack.h/2+2,boxCenterZ);}
-function renderStored(){
- for(let i=0;i<stored.length;i++){
-  const b=stored[i];
-  const item=new THREE.Group();root.add(item);item.name='Entrega almacenada '+(i+1);
-  const m=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL((.085+i*.075)%1,.36,.48),roughness:.93});
-  meshBox(item,b.w,b.h,b.d,0,0,0,m,'Caja '+(i+1));
-  meshBox(item,b.w,.25,1.5,0,b.h/2+.14,0,mat.tape,'Cinta');
-  item.position.set(b.x,b.y,b.z);
- }
+function renderStoredPackage(b,i){
+ const item=new THREE.Group();cabinet.add(item);item.name='Entrega almacenada '+(i+1);
+ const m=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL((.085+i*.075)%1,.36,.48),roughness:.93});
+ meshBox(item,b.w,b.h,b.d,0,0,0,m,'Caja '+(i+1));
+ meshBox(item,b.w,.25,1.5,0,b.h/2+.14,0,mat.tape,'Cinta');
+ item.position.set(b.x,b.y,b.z);
 }
 function updateStoredStatus(){
  const volume=p.boxW*p.boxD*p.boxH;
@@ -342,10 +409,16 @@ function updateStoredStatus(){
 function refreshGeometry(){
  // Existing packages keep their sizes; if dimensions changed, recalculate their placement.
  const previous=stored.map(a=>a.original||({w:a.w,h:a.h,d:a.d}));
+ syncCabinetDimensions();
  stored=[];
  for(const size of previous){const slot=findStorageSlot(size);if(slot)stored.push(slot);}
- deliverySlot=null;deliveryCommitted=false;deliveryBlocked=false;deliveryReason='';
+ prepareNext();
  build();
+ const removed=previous.length-stored.length;
+ $('message').textContent=removed
+  ? 'Medidas actualizadas. Cajas retiradas por falta de espacio: '+removed+'.'
+  : 'Medidas actualizadas. El depósito se ajustó a la abertura y a las ruedas.';
+ if(document.querySelector('[data-view="cut"]').classList.contains('active'))frameCutView();
 }
 const smooth=n=>{n=Math.max(0,Math.min(1,n));return n*n*(3-2*n)};
 function positionApproach(){return new THREE.Vector3(0,hingeY+pack.h/2+15,p.wallD/2+pack.d/2+20)};
@@ -365,23 +438,17 @@ function updateParcel(){if(!parcel)return;parcel.visible=stage!=='none'&&stage!=
  else parcel.rotation.y=0;
 }
 function setStage(value,t=0){stage=value;progress=t;updateParcel();$('state').textContent=({none:'Vacío',approach:'Introduciendo',supported:'Sobre pestaña',fall:'Caída ilustrativa',stored:'Depositado',pickup:'Recogida',blocked:'No cabe',removed:'Retirado'})[value]||value;}
-function updateChecks(){const risks=[];const hasOpening=pack.w<p.openingW-2*p.gap-2&&pack.h<p.openingH-2*p.gap-2;const canSupport=pack.d<p.tongueL-3 && pack.w<p.tongueW-3;const fitsCabinet=pack.w<p.boxW-4&&pack.d<p.boxD-5&&pack.h<boxTop-p.boxFloor-5;const wallHeight=p.entryY, cabinetH=boxTop-p.boxFloor;
+function updateChecks(){const risks=[];const hasOpening=pack.w<p.openingW-2*p.gap-2&&pack.h<p.openingH-2*p.gap-2;const canSupport=pack.d<p.tongueL-3 && pack.w<tongueWidth()-3;const fitsCabinet=pack.w<p.boxW-4&&pack.d<p.boxD-5&&pack.h<p.boxH-5;const wallHeight=p.entryY, cabinetH=p.boxH;
  if(!hasOpening)risks.push('La caja podría NO pasar por la abertura de entrada.');
  if(!canSupport)risks.push('La caja supera el ancho o la longitud de apoyo nominal de la pestaña interior.');
  if(!fitsCabinet)risks.push('La caja supera alguna dimensión interior del depósito.');
- if(p.boxW<=p.openingW)risks.push('Depósito igual o más angosto que la entrada: revisar holguras laterales.');
- if(p.tongueW>p.boxW-3)risks.push('La pestaña interior es demasiado ancha para el depósito; revisar las holguras.');
- if(p.tongueW>p.openingW-2*p.gap)risks.push('La pestaña interior es más ancha que la abertura de entrada; revisar interferencias.');
  if(p.tongueL>p.boxD-10)risks.push('La pestaña podría acercarse demasiado a la puerta interior.');
- if(boxTop<p.entryY+p.openingH+5)risks.push('El techo del depósito queda demasiado bajo para cubrir por completo la abertura y su mecanismo.');
- if(p.boxFloor>=p.entryY-10)risks.push('La base del depósito está demasiado cerca de la entrada; hay poco espacio de caída.');
- const wheelBottom=p.boxFloor-wheelHeight(p.wheelD);
- if(Math.abs(wheelBottom)>.6)risks.push('Las ruedas no llegan exactamente al piso (desfase '+wheelBottom.toFixed(1)+' cm). Ajusta «Altura de la base» a '+wheelHeight(p.wheelD).toFixed(1)+' cm o elige otro tamaño.');
  if(p.wheelD>7.5)risks.push('Las ruedas de 4 pulgadas requieren comprobar su placa, freno, espacio y capacidad de carga reales.');
  if(p.entryY-p.boxFloor<pack.h+10)risks.push('Hay poca altura libre debajo del eje para este paquete.');
  $('checks').innerHTML=`<strong class="${risks.length?'bad':'ok'}">${risks.length?'⚠ Atención geométrica':'✓ Límites básicos compatibles'}</strong><br>`+(risks.length?risks.map(s=>'• '+s).join('<br>'):'La abertura y el depósito admiten las dimensiones nominales seleccionadas.')+`<br><span class="tiny">Altura útil aproximada: ${cabinetH.toFixed(1)} cm · Entrada a ${wallHeight.toFixed(1)} cm del suelo. No es una prueba de caída ni de bloqueo del giro.</span>`;
 }
 function ensureSlot(){
+ if(cabinetOffset>0)return false;
  if(!deliverySlot&&!deliveryBlocked)deliverySlot=findStorageSlot(pack);
  if(!deliverySlot){
   deliveryBlocked=true;deliveryReason=explainRejection();
@@ -399,21 +466,21 @@ function commitDelivery(){
  deliveryCommitted=true;
  showDeliveryStatus('<b>✓ Caja depositada en el modelo</b> · '+(deliveryOrientation?'Rotada 90° en la base. ':'')+'Puedes preparar otra entrega. La trayectoria aún no está validada físicamente.');
  parcel.visible=false;
- // Append finalized box without resetting animation.
- const b=stored[stored.length-1];
- const item=new THREE.Group();root.add(item);
- const m=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL((.085+(stored.length-1)*.075)%1,.36,.48),roughness:.93});
- meshBox(item,b.w,b.h,b.d,0,0,0,m,'Caja almacenada '+stored.length);
- meshBox(item,b.w,.25,1.5,0,b.h/2+.14,0,mat.tape);
- item.position.set(b.x,b.y,b.z);
+ renderStoredPackage(stored.at(-1),stored.length-1);
  updateStoredStatus();
 }
-function prepareNext(){
+function prepareNext(keepAngle=false){
  playing=false;
  deliverySlot=null;deliveryCommitted=false;deliveryBlocked=false;deliveryReason='';
+ const angle=theta;
  setTime(0);
+ if(keepAngle)setAngle(angle);
+ const separated=cabinetOffset>0;
+ if(separated)$('phase').textContent='Depósito separado del muro';
  showDeliveryStatus('Lista para una nueva entrega. Selecciona caja y pulsa Reproducir entrega.');
- $('message').textContent='Nueva entrega preparada. Modifica ancho, alto y fondo de la caja si lo deseas y pulsa «Reproducir entrega».';
+ $('message').textContent=separated
+  ? 'El depósito se mueve sobre ruedas. El marco y su mecanismo quedan fijos en el muro.'
+  : 'Nueva entrega preparada. Modifica ancho, alto y fondo de la caja si lo deseas y pulsa «Reproducir entrega».';
 }
 function setTime(t){time=Math.max(0,Math.min(12,t));let a=0,which='none',mix=0,desc='Tapa cerrada · pestaña vertical dentro del depósito';
  if(time<2.5){a=90*smooth(time/2.5);desc='La tapa exterior baja y se apoya sobre el canto; la pestaña sube horizontalmente';}
@@ -430,9 +497,27 @@ function setTime(t){time=Math.max(0,Math.min(12,t));let a=0,which='none',mix=0,d
  if(deliveryCommitted && parcel)parcel.visible=false;
  $('timeline').value=time;$('clock').textContent=time.toFixed(1)+' / 12.0 s';$('phase').textContent=desc;
 }
-const views={outer:{position:[245,190,295],label:'Vista exterior',desc:'Tapa remetida ~20 cm desde la fachada. El canto del muro sirve de apoyo al abrir.'},inside:{position:[210,170,-320],label:'Vista interior de la casa',desc:'Gabinete negro opaco. La puerta permite retirar paquetes; cerrada oculta todo el contenido.'},cut:{position:[355,170,12],label:'Corte lateral',desc:'La tapa exterior y la pestaña interior giran juntas desde el mismo eje; se muestra el volumen del depósito.'},front:{position:[0,155,395],label:'Vista de fachada',desc:'Marco metálico independiente, abertura de depósito y tapa remetida.'},mechanism:{position:[260,175,140],label:'Vista del mecanismo',desc:'Activa el corte para inspeccionar el brazo exterior y la pestaña interior como una sola pieza.'}};
-function selectView(key){const v=views[key];if(key==='cut'){$('section').checked=true;cut=true;build();}else if(key==='inside'){$('section').checked=false;cut=false;build();}camTween={from:camera.position.clone(),to:new THREE.Vector3(...v.position),start:performance.now()};$('viewTitle').textContent=v.label;$('viewDescription').textContent=v.desc;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===key));orbit.target.set(0,p.entryY+20,0);}
+const views={outer:{position:[245,190,295],label:'Vista exterior',desc:'Tapa remetida ~20 cm desde la fachada. El canto del muro sirve de apoyo al abrir.'},inside:{position:[210,170,-320],label:'Vista interior de la casa',desc:'Gabinete negro opaco. La puerta permite retirar paquetes; cerrada oculta todo el contenido.'},cut:{label:'Corte lateral',desc:'El marco y su mecanismo quedan en el muro al retirar el depósito sobre ruedas.'},front:{position:[0,155,395],label:'Vista de fachada',desc:'Marco metálico fijo al muro con eje y tapa basculante.'},mechanism:{position:[260,175,140],label:'Vista del mecanismo',desc:'Activa el corte para inspeccionar el brazo exterior y la pestaña interior como una sola pieza.'}};
+function selectView(key){
+ const v=views[key];
+ if(key==='cut' || key==='inside'){
+  cut=key==='cut';$('section').checked=cut;build();
+ }
+ $('viewTitle').textContent=v.label;$('viewDescription').textContent=v.desc;
+ document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===key));
+ if(key==='cut'){
+  frameCutView();
+ }else{
+  const targetZ=key==='inside'?-cabinetOffset:0;
+  const [x,y,z]=v.position;
+  orbit.target.set(0,p.entryY+20,targetZ);
+  camTween={from:camera.position.clone(),to:new THREE.Vector3(x,y,z+targetZ),start:performance.now()};
+ }
+}
 function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>selectView(b.dataset.view));
+ $('cabinetOffset').oninput=e=>moveCabinet(+e.target.value);
+ $('rollBack').onclick=()=>moveCabinet(60);
+ $('dock').onclick=()=>moveCabinet(0);
  $('section').onchange=e=>{cut=e.target.checked;build();};$('ghost').onchange=e=>{ghost=e.target.checked;build();};$('guide').onchange=e=>{guides=e.target.checked;if(guideGroup)guideGroup.visible=guides;};
  $('open').onclick=()=>{playing=false;setAngle(90);setStage('none');$('message').textContent='Tapa exterior horizontal sobre el canto; pestaña interior solidaria. Puedes editar ancho, longitud y espesor de la pestaña sin cambiar la tapa exterior.';};
  $('place').onclick=()=>{playing=false;setAngle(90);setStage('supported');$('message').textContent='Caja colocada sobre la pestaña interior. Para verificar una caja grande, inspecciona también la vista de corte lateral.';};
@@ -443,23 +528,21 @@ function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.
  $('nextDelivery').onclick=()=>prepareNext();
  $('clearPackages').onclick=()=>{stored=[];prepareNext();build();$('message').textContent='Depósito vaciado; ya puedes probar una secuencia nueva.';};
  $('pause').onclick=()=>playing=false;$('reset').onclick=()=>{playing=false;accessOpen=false;if(access)access.rotation.y=0;prepareNext();};$('timeline').oninput=e=>{playing=false;setTime(+e.target.value);}; document.querySelectorAll('[data-pack]').forEach(b=>b.onclick=()=>{pack={...PACKS[b.dataset.pack]};$('amazonBox').value='';for(const key of ['w','h','d'])$('pack_'+key).value=pack[key];document.querySelectorAll('[data-pack]').forEach(x=>x.classList.toggle('active',x===b));deliverySlot=null;deliveryBlocked=false;build();});
- $('save').onclick=()=>download(JSON.stringify({format:'buzon-3d-v13',units:'cm',dimensions:p,package:pack,storedPackages:stored.map(a=>a.original||({w:a.w,h:a.h,d:a.d})),technicalStatus:'conceptual, no validated physical collision'},null,2),'buzon-medidas-v13.json','application/json');
+ $('save').onclick=()=>download(JSON.stringify({format:'buzon-3d-v13',units:'cm',dimensions:p,package:pack,cabinetOffset,storedPackages:stored.map(a=>a.original||({w:a.w,h:a.h,d:a.d})),technicalStatus:'conceptual, no validated physical collision'},null,2),'buzon-medidas-v13.json','application/json');
  $('load').onclick=()=>$('loadfile').click();$('loadfile').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());
- if(j.dimensions && !Number.isFinite(j.dimensions.boxH) && Number.isFinite(j.dimensions.boxTopExtra)){
-  const d=j.dimensions;
-  const base=Number.isFinite(d.boxFloor)?d.boxFloor:defaults.boxFloor;
-  const entry=Number.isFinite(d.entryY)?d.entryY:defaults.entryY;
-  const opening=Number.isFinite(d.openingH)?d.openingH:defaults.openingH;
-  d.boxH=entry+opening+d.boxTopExtra-base;
- }
  for(const [key,,min,max]of dimDefs){if(Number.isFinite(j.dimensions?.[key]))p[key]=Math.max(min,Math.min(max,j.dimensions[key]));$('p_'+key).value=p[key];}for(const [key,,min,max]of packDefs){if(Number.isFinite(j.package?.[key]))pack[key]=Math.max(min,Math.min(max,j.package[key]));$('pack_'+key).value=pack[key];}
+ syncCabinetDimensions();
  stored=[];for(const size of j.storedPackages||[]){if(['w','h','d'].every(k=>Number.isFinite(size[k])&&size[k]>0)){const slot=findStorageSlot(size);if(slot)stored.push(slot);}}
- deliverySlot=null;deliveryCommitted=false;deliveryBlocked=false;deliveryReason='';
- build();$('message').textContent='Medidas y cajas guardadas recuperadas.';}catch(err){$('message').textContent='No se pudo leer la configuración.';}e.target.value='';};
+ const offset=$('cabinetOffset');
+ cabinetOffset=Number.isFinite(j.cabinetOffset)?Math.max(0,Math.min(+offset.max,Math.round(j.cabinetOffset))):0;
+ updateCabinetControls();
+ prepareNext();
+ build();$('message').textContent='Medidas y cajas guardadas recuperadas.';
+ if(document.querySelector('[data-view="cut"]').classList.contains('active'))frameCutView();}catch(err){$('message').textContent='No se pudo leer la configuración.';}e.target.value='';};
  $('snapshot').onclick=()=>{renderer.render(scene,camera);const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='buzon-v13-vista.png';a.click();};
 }
 function download(text,name,type){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
-function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}
-init();settingsUI();initAmazonCatalog();buttonControls();build();setTime(0);resize();window.addEventListener('resize',resize);
+function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);if(document.querySelector('[data-view="cut"]').classList.contains('active'))frameCutView();}
+init();settingsUI();syncCabinetDimensions();initAmazonCatalog();buttonControls();updateCabinetControls();build();setTime(0);resize();window.addEventListener('resize',resize);
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.06,(now-prev)/1000);prev=now;if(playing){setTime(time+dt*speed);if(time>=12)playing=false;}if(camTween){const u=Math.min(1,(now-camTween.start)/600);camera.position.lerpVectors(camTween.from,camTween.to,smooth(u));if(u>=1)camTween=null;}orbit.update();renderer.render(scene,camera);}requestAnimationFrame(animate);
 </script></body></html>
