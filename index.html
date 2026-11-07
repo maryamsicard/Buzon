@@ -51,7 +51,7 @@ button:hover{background:#dcebf0}
 .gridfields input[readonly]{background:#eef4f7}.buttons button:disabled{opacity:.55;cursor:default}
 .latch-controls{margin:8px 0 12px}.latch-controls .buttons{margin:8px 0}.latch-controls p{margin:6px 0}
 .detail-key{font-size:11px;color:var(--txt);margin-top:7px}.detail-key b{color:#126b61}
-.dimension-toggle{display:inline-flex;align-items:center;gap:5px;margin-top:7px;pointer-events:auto;color:#126b61;font-size:11px;font-weight:650;cursor:pointer}
+.dimension-toggle{display:inline-flex;align-items:center;gap:5px;margin-top:10px;color:#126b61;font-size:12px;font-weight:650;cursor:pointer}
 .dimension-toggle[hidden]{display:none}.dimension-toggle input{accent-color:#126b61;margin:0}
 .header-links{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:7px 12px}
 .header-links a,.hardware-links a,.back-link,.hardware-shortcut{color:#126b61;text-underline-offset:3px}
@@ -72,6 +72,7 @@ button:hover{background:#dcebf0}
 <header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V11 · catálogo Amazon y ruedas industriales · unidades en cm · unidades en cm</small></div><div class="header-links"><span class="pill">Modelo conceptual editable</span><a href="#herrajes">Herrajes</a><a href="#exportar">Planos PDF</a></div></header>
 <main id="simulador"><aside class="sidebar">
 <div class="row"><strong>Simulación de entrega</strong><span class="pill" id="state">Cerrado</span></div>
+<label id="dimensionToggle" class="dimension-toggle"><input type="checkbox" id="showDimensions" checked> Mostrar cotas</label>
 <h2>Animación y movimiento</h2>
 <div class="buttons"><button class="primary" id="play">▶ Reproducir entrega</button><button id="pause">Ⅱ Pausar</button><button id="reset">↺ Reiniciar</button></div>
 <div class="buttons" style="margin-top:8px"><button id="open">Abrir tapa</button><button id="place">Colocar caja</button><button id="close">Cerrar y depositar</button><button id="access" aria-expanded="false" aria-controls="accessForm">Abrir puerta interior</button></div>
@@ -126,7 +127,7 @@ button:hover{background:#dcebf0}
 <p class="muted2">El JSON conserva las medidas editables para continuar en el simulador.</p></details>
 <input id="loadfile" type="file" accept=".json,application/json" hidden>
 <p class="muted2" style="margin-top:20px">⚠️ La ubicación final y la acumulación de cajas son geométricas y aproximadas; NO constituyen una simulación dinámica de gravedad, choques o fricción. Las comprobaciones verifican límites geométricos básicos y NO garantizan que la caja deslice, caiga o permita el retorno. Antes de fabricar necesitaremos evaluar colisiones 3D, masa, fricción, gravedad, holguras, cargas, seguridad y hacer un prototipo físico. El plano de fabricación queda pendiente.</p>
-</aside><section class="viewport"><div id="canvas"></div><div class="overlay"><strong id="viewTitle">Vista exterior</strong><p id="viewDescription">Arrastra con el mouse para rotar y usa la rueda para acercarte. La tapa está remetida hasta la cara interior del muro.</p><label id="dimensionToggle" class="dimension-toggle"><input type="checkbox" id="showDimensions" checked> Mostrar cotas</label><div id="latchKey" class="detail-key" hidden><b>Verde</b> · leva del depósito<br><strong style="color:var(--txt)">Acero claro</strong> · receptor del marco y acceso Allen</div></div><div class="corner">Calle (+Z) · Casa (−Z)</div><div class="footer"><div class="row"><strong id="phase">Tapa cerrada, depósito oculto</strong><span id="clock" class="muted">0.0 / 12.0 s</span></div><input type="range" min="0" max="12" step="0.01" id="timeline" value="0"><div class="legend">El conjunto del muro incluye marco, eje, tapa y pestaña. El depósito con ruedas se retira hacia el interior para separarlo del conjunto fijo.</div></div></section></main>
+</aside><section class="viewport"><div id="canvas"></div><div class="overlay"><strong id="viewTitle">Vista exterior</strong><p id="viewDescription">Arrastra con el mouse para rotar y usa la rueda para acercarte. La tapa está remetida hasta la cara interior del muro.</p><div id="latchKey" class="detail-key" hidden><b>Verde</b> · leva del depósito<br><strong style="color:var(--txt)">Acero claro</strong> · receptor del marco y acceso Allen</div></div><div class="corner">Calle (+Z) · Casa (−Z)</div><div class="footer"><div class="row"><strong id="phase">Tapa cerrada, depósito oculto</strong><span id="clock" class="muted">0.0 / 12.0 s</span></div><input type="range" min="0" max="12" step="0.01" id="timeline" value="0"><div class="legend">El conjunto del muro incluye marco, eje, tapa y pestaña. El depósito con ruedas se retira hacia el interior para separarlo del conjunto fijo.</div></div></section></main>
 <section class="hardware" id="herrajes" aria-labelledby="hardwareTitle">
 <header><div><h2 id="hardwareTitle">Herrajes para comprar</h2><p>Referencias para cotizar las piezas comerciales del buzón. Confirma las medidas de montaje y el envío antes de pedirlas.</p></div><a class="back-link" href="#simulador">Volver al simulador</a></header>
 <div class="hardware-grid">
@@ -485,7 +486,7 @@ function addDimension(parent,title,value,from,to,displacement){
 
  const caption=title+' '+dimensionFormat.format(value)+' cm';
  const canvas=document.createElement('canvas'),context=canvas.getContext('2d');
- const font='600 12px system-ui, sans-serif';
+ const font='700 12px system-ui, sans-serif';
  context.font=font;
  const width=Math.ceil(context.measureText(caption).width)+8,height=20;
  canvas.width=width*2;
@@ -493,11 +494,7 @@ function addDimension(parent,title,value,from,to,displacement){
  context.scale(2,2);
  context.font=font;
  context.textBaseline='middle';
- context.lineJoin='round';
- context.lineWidth=2.5;
- context.strokeStyle='#f8fafc';
- context.strokeText(caption,4,height/2);
- context.fillStyle='#144f48';
+ context.fillStyle='#173d38';
  context.fillText(caption,4,height/2);
  const texture=new THREE.CanvasTexture(canvas);
  texture.colorSpace=THREE.SRGBColorSpace;
