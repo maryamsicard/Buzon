@@ -102,7 +102,7 @@ button:hover{background:#dcebf0}
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 const $=id=>document.getElementById(id);const PI=Math.PI;
-const defaults={openingW:80,openingH:55,wallD:20,entryY:100,tongueL:30,tongueW:78.6,tongueT:.3,boxD:60,frameW:5,gap:.7,wheelD:7.5};
+const defaults={openingW:60,openingH:50,wallD:20,entryY:80,tongueL:30,tongueW:78.6,tongueT:.3,boxD:50,frameW:5,gap:.7,wheelD:7.5};
 const roofAllowance=10;
 const dimGroups=[
  {title:'01 · Muro y abertura de entrada',description:'Hueco por donde entra el paquete y posición respecto al piso.',
@@ -116,7 +116,7 @@ const dimGroups=[
    ['boxW','Ancho interior calculado',null,null,'Igual al ancho de la abertura.'],
    ['boxH','Altura del gabinete calculada',null,null,'Altura hasta el techo, medida desde la base sobre las ruedas.'],
    ['boxTop','Altura total desde el piso',null,null,'Altura de entrada más alto de abertura más '+roofAllowance+' cm.'],
-   ['boxD','Profundidad del depósito',55,170,'Medida independiente, hacia el interior de la casa.'],
+   ['boxD','Profundidad del depósito',50,170,'Medida independiente, hacia el interior de la casa.'],
    ['boxFloor','Altura de la base sobre el piso',null,null,'Se ajusta a la altura de montaje de las ruedas.']
   ]}
  ,{title:'05 · Ruedas del depósito interior',description:'Cuatro rodajas industriales bajo la caja negra. Dos incluyen freno en este modelo.',
