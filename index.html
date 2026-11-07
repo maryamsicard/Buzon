@@ -49,6 +49,8 @@ button:hover{background:#dcebf0}
 .status{color:#294253}
 .ok{color:#15745f}.bad{color:#946018}
 .gridfields input[readonly]{background:#eef4f7}.buttons button:disabled{opacity:.55;cursor:default}
+.latch-controls{margin:8px 0 12px}.latch-controls .buttons{margin:8px 0}.latch-controls p{margin:6px 0}
+.detail-key{font-size:11px;color:var(--txt);margin-top:7px}.detail-key b{color:#126b61}
 </style></head><body>
 <header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V11 · catálogo Amazon y ruedas industriales · unidades en cm · unidades en cm</small></div><span class="pill">Modelo conceptual editable</span></header>
 <main><aside class="sidebar">
@@ -57,6 +59,11 @@ button:hover{background:#dcebf0}
 <div class="buttons"><button class="primary" id="play">▶ Reproducir entrega</button><button id="pause">Ⅱ Pausar</button><button id="reset">↺ Reiniciar</button></div>
 <div class="buttons" style="margin-top:8px"><button id="open">Abrir tapa</button><button id="place">Colocar caja</button><button id="close">Cerrar y depositar</button><button id="access">Abrir puerta interior</button></div>
 <h2>Depósito móvil sobre ruedas</h2>
+<div class="card latch-controls">
+<div class="row"><strong>Cierres ocultos</strong><span id="latchState" class="pill" role="status">Fijado al marco</span></div>
+<div class="buttons"><button id="latchToggle">Liberar depósito</button><button id="latchDetail" data-view="latch">Detalle del cierre</button></div>
+<p id="latchHelp" class="muted2"></p>
+</div>
 <div class="row"><label for="cabinetOffset">Separación del muro</label><output id="cabinetOffsetText" class="status" for="cabinetOffset">0 cm</output></div>
 <input class="range" type="range" id="cabinetOffset" min="0" max="120" step="1" value="0">
 <div class="buttons"><button id="rollBack">Retirar 60 cm</button><button id="dock">Volver al muro</button></div>
@@ -89,7 +96,7 @@ button:hover{background:#dcebf0}
 <div class="card" id="checks" style="margin-top:10px">Preparando comprobaciones...</div>
 <h2>Guardar y exportar</h2><div class="buttons"><button id="save">Guardar medidas (.json)</button><button id="load">Cargar medidas</button><button id="snapshot">Imagen PNG</button></div><input id="loadfile" type="file" accept=".json,application/json" hidden>
 <p class="muted2" style="margin-top:20px">⚠️ La ubicación final y la acumulación de cajas son geométricas y aproximadas; NO constituyen una simulación dinámica de gravedad, choques o fricción. Las comprobaciones verifican límites geométricos básicos y NO garantizan que la caja deslice, caiga o permita el retorno. Antes de fabricar necesitaremos evaluar colisiones 3D, masa, fricción, gravedad, holguras, cargas, seguridad y hacer un prototipo físico. El plano de fabricación queda pendiente.</p>
-</aside><section class="viewport"><div id="canvas"></div><div class="overlay"><strong id="viewTitle">Vista exterior</strong><p id="viewDescription">Arrastra con el mouse para rotar y usa la rueda para acercarte. La tapa está remetida hasta la cara interior del muro de 20 cm.</p></div><div class="corner">Calle (+Z) · Casa (−Z)</div><div class="footer"><div class="row"><strong id="phase">Tapa cerrada, depósito oculto</strong><span id="clock" class="muted">0.0 / 12.0 s</span></div><input type="range" min="0" max="12" step="0.01" id="timeline" value="0"><div class="legend">El conjunto del muro incluye marco, eje, tapa y pestaña. El depósito con ruedas se retira hacia el interior para separarlo del conjunto fijo.</div></div></section></main>
+</aside><section class="viewport"><div id="canvas"></div><div class="overlay"><strong id="viewTitle">Vista exterior</strong><p id="viewDescription">Arrastra con el mouse para rotar y usa la rueda para acercarte. La tapa está remetida hasta la cara interior del muro de 20 cm.</p><div id="latchKey" class="detail-key" hidden><b>Verde</b> · leva del depósito<br><strong style="color:var(--txt)">Acero claro</strong> · receptor del marco y acceso Allen</div></div><div class="corner">Calle (+Z) · Casa (−Z)</div><div class="footer"><div class="row"><strong id="phase">Tapa cerrada, depósito oculto</strong><span id="clock" class="muted">0.0 / 12.0 s</span></div><input type="range" min="0" max="12" step="0.01" id="timeline" value="0"><div class="legend">El conjunto del muro incluye marco, eje, tapa y pestaña. El depósito con ruedas se retira hacia el interior para separarlo del conjunto fijo.</div></div></section></main>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
@@ -121,12 +128,15 @@ const packDefs=[['w','Ancho',5,170],['h','Alto',3,120],['d','Fondo',5,170]];
 const PACKS={small:{w:25,h:15,d:12},medium:{w:40,h:18,d:18},large:{w:60,h:40,d:40}};
 let p={...defaults},pack={...PACKS.medium},theta=0,stage='none',progress=0,accessOpen=false,cut=true,ghost=true,guides=true,time=0,speed=1,playing=false,prev=performance.now();
 let scene,camera,renderer,orbit,root,cabinet,pivot,parcel,access,guideGroup,deliveryGuide,camTween=null,boxCenterZ=0,hingeZ=0,hingeY=0;
-let cabinetOffset=0,rollingMeshes=[];
+let cabinetOffset=0,cabinetLocked=true,rollingMeshes=[];
+let currentView='outer',latchParts=[];
 let stored=[],deliveryCommitted=false,deliverySlot=null,deliveryBlocked=false,deliveryReason='',deliveryOrientation=0;
 const mat={wall:new THREE.MeshStandardMaterial({color:0x8893a1,roughness:1}),frame:new THREE.MeshStandardMaterial({color:0x222a34,metalness:.68,roughness:.36}),lid:new THREE.MeshStandardMaterial({color:0x323e4b,metalness:.55,roughness:.42,side:THREE.DoubleSide}),tongue:new THREE.MeshStandardMaterial({color:0x7d929f,metalness:.3,roughness:.5,side:THREE.DoubleSide}),box:new THREE.MeshStandardMaterial({color:0x252e39,metalness:.35,roughness:.56,side:THREE.DoubleSide}),inner:new THREE.MeshStandardMaterial({color:0x101923,roughness:.85,side:THREE.DoubleSide}),handle:new THREE.MeshStandardMaterial({color:0xc3d4df,metalness:.83,roughness:.21}),pkg:new THREE.MeshStandardMaterial({color:0xbf813f,roughness:.96}),tape:new THREE.MeshStandardMaterial({color:0xe9d6aa,roughness:.9}),hinge:new THREE.MeshStandardMaterial({color:0xd8a760,metalness:.55,roughness:.34}),ground:new THREE.MeshStandardMaterial({color:0x25303c,roughness:.96}),
  caster:new THREE.MeshStandardMaterial({color:0x9aaab8,metalness:.78,roughness:.3}),
  rubber:new THREE.MeshStandardMaterial({color:0x22262b,roughness:.93}),
- brake:new THREE.MeshStandardMaterial({color:0xd68a42,metalness:.35,roughness:.55})};
+ brake:new THREE.MeshStandardMaterial({color:0xd68a42,metalness:.35,roughness:.55}),
+ latchCam:new THREE.MeshStandardMaterial({color:0x238479,metalness:.38,roughness:.38}),
+ latchSteel:new THREE.MeshStandardMaterial({color:0xb5c4cc,metalness:.48,roughness:.37})};
 function meshBox(parent,w,h,d,x,y,z,m,name=''){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.name=name;parent.add(o);return o}
 function cylinder(parent,r,len,x,y,z,m){const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,20),m);o.position.set(x,y,z);o.rotation.z=PI/2;parent.add(o);return o;}
 function addLine(parent,points,color=0x80d5f1){const geo=new THREE.BufferGeometry().setFromPoints(points);const line=new THREE.Line(geo,new THREE.LineDashedMaterial({color,dashSize:5,gapSize:2}));line.computeLineDistances();parent.add(line);return line;}
@@ -219,6 +229,85 @@ function syncCabinetDimensions(){
  for(const key of ['boxW','boxFloor','boxTop','boxH'])$('p_'+key).value=Number(p[key].toFixed(2));
 }
 function tongueWidth(){return Math.min(p.tongueW,p.openingW-2*p.gap);}
+function latchHeight(){
+ const top=p.entryY+p.openingH;
+ return Math.max(p.entryY+7,Math.min(top-7,160));
+}
+function updateLatchMeshes(){
+ const detail=currentView==='latch';
+ for(const {cover,outerEar,cam} of latchParts){
+  cover.visible=!detail;
+  outerEar.visible=!detail;
+  cam.rotation.x=cabinetLocked?0:-PI*.54;
+ }
+}
+function latchProfile(parent,shape,thickness,x,z,material,name){
+ const geometry=new THREE.ExtrudeGeometry(shape,{depth:thickness,bevelEnabled:false,curveSegments:12});
+ geometry.translate(0,0,-thickness/2);
+ geometry.rotateY(-PI/2);
+ const mesh=new THREE.Mesh(geometry,material);
+ mesh.position.set(x,0,z);
+ mesh.name=name;
+ parent.add(mesh);
+ return mesh;
+}
+function buildLatches(wallAssembly,cabinetHalf,boxFront){
+ latchParts=[];
+ const height=latchHeight();
+ const pivotZ=-3.4;
+ for(const side of [-1,1]){
+  const label=side<0?'izquierdo':'derecho';
+  const mount=new THREE.Group();
+  mount.name='Receptor fijo '+label;
+  mount.position.set(side*cabinetHalf,height,boxFront);
+  mount.scale.x=side;
+  wallAssembly.add(mount);
+  meshBox(mount,2.6,10,.45,.25,0,1.52,mat.frame,'Refuerzo del marco');
+  meshBox(mount,.25,3.1,1.45,.08,0,1.05,mat.latchSteel,'Oreja interior del receptor');
+  const outerEar=meshBox(mount,.25,3.1,1.45,1.42,0,1.05,mat.latchSteel,'Oreja exterior del receptor');
+  const pin=cylinder(mount,.52,1.55,.75,0,.55,mat.latchSteel);
+  pin.name='Perno fijo del receptor';
+
+  const pocket=new THREE.Group();
+  pocket.name='Cierre oculto '+label;
+  pocket.position.copy(mount.position);
+  pocket.scale.x=side;
+  cabinet.add(pocket);
+  meshBox(pocket,.25,10.6,7.5,.05,0,-3.75,mat.box,'Refuerzo del depósito');
+  for(const y of [-5.2,5.2]){
+   meshBox(pocket,1.95,.2,8.95,1,y,-2.97,mat.box,'Borde del alojamiento');
+  }
+  meshBox(pocket,1.95,10.6,.2,1,0,-7.45,mat.box,'Fondo del alojamiento');
+  cylinder(pocket,1.08,1.35,.9,0,pivotZ,mat.latchSteel);
+  const socket=new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,.04,6),mat.inner);
+  socket.rotation.z=PI/2;
+  socket.position.set(1.577,0,pivotZ);
+  socket.name='Acceso Allen';
+  pocket.add(socket);
+
+  const hook=new THREE.Shape();
+  hook.moveTo(-1.3,-1.12);
+  hook.lineTo(2.5,-1.16);
+  hook.quadraticCurveTo(3.12,-1.12,3.38,-.54);
+  hook.quadraticCurveTo(3.42,.72,4.13,.66);
+  hook.quadraticCurveTo(4.66,.61,4.58,-.23);
+  hook.lineTo(5.02,-.29);
+  hook.quadraticCurveTo(5.36,1.63,4.21,1.67);
+  hook.lineTo(-.24,1.48);
+  hook.quadraticCurveTo(-1.84,1.34,-1.3,-1.12);
+  const cam=latchProfile(pocket,hook,.48,.75,pivotZ,mat.latchCam,'Leva móvil');
+
+  const face=new THREE.Shape();
+  face.moveTo(-7.55,-5.3);face.lineTo(1.5,-5.3);
+  face.lineTo(1.5,5.3);face.lineTo(-7.55,5.3);face.closePath();
+  const hole=new THREE.Path();
+  hole.absarc(pivotZ,0,.65,0,2*PI,true);
+  face.holes.push(hole);
+  const cover=latchProfile(pocket,face,.22,1.66,0,mat.box,'Cubierta del cierre');
+  latchParts.push({cover,outerEar,cam});
+ }
+ updateLatchMeshes();
+}
 function positionCabinet(){
  cabinet.position.z=-cabinetOffset;
  const turn=-cabinetOffset/(p.wheelD/2);
@@ -229,18 +318,28 @@ function updateCabinetControls(){
  const separated=cabinetOffset>0;
  $('cabinetOffset').value=cabinetOffset;
  $('cabinetOffsetText').textContent=cabinetOffset+' cm';
+ $('cabinetOffset').disabled=cabinetLocked;
+ $('rollBack').disabled=cabinetLocked;
  $('dock').disabled=!separated;
+ $('latchToggle').disabled=separated;
+ $('latchToggle').textContent=cabinetLocked?'Liberar depósito':'Fijar al marco';
+ $('latchState').textContent=separated?'Separado':cabinetLocked?'Fijado al marco':'Liberado';
+ $('latchHelp').textContent=separated
+  ? 'Vuelve al muro para alinear las levas con los receptores.'
+  : cabinetLocked
+   ? 'Libera los cierres antes de retirar el depósito.'
+   : 'Puedes mover el depósito o fijarlo de nuevo al marco.';
  for(const id of ['play','place','close','nextDelivery','timeline'])$(id).disabled=separated;
 }
 function moveCabinet(offset){
- if(offset===cabinetOffset)return;
+ if(cabinetLocked || offset===cabinetOffset)return;
  const wasDocked=cabinetOffset===0;
  cabinetOffset=offset;
  positionCabinet();
  updateCabinetControls();
  if(wasDocked || offset===0)prepareNext(true);
- if(wasDocked)selectView('cut');
- else if(document.querySelector('[data-view="cut"]').classList.contains('active'))frameCutView();
+ if(wasDocked && currentView!=='latch')selectView('cut');
+ else frameFocusedView();
 }
 function frameCutView(){
  const span=p.wallD+p.boxD+cabinetOffset;
@@ -250,6 +349,24 @@ function frameCutView(){
  const distance=Math.max(355,(span/2+22)/(Math.tan(halfFov)*camera.aspect),(targetY+22)/Math.tan(halfFov));
  orbit.target.set(0,targetY,targetZ);
  camTween={from:camera.position.clone(),to:new THREE.Vector3(distance,targetY+50,targetZ+12),start:performance.now()};
+}
+function frameLatchView(){
+ const separation=cabinetOffset;
+ const targetX=p.boxW/2+2;
+ const targetY=latchHeight();
+ const targetZ=-p.wallD/2-4-separation/2;
+ const halfFov=THREE.MathUtils.degToRad(camera.fov/2);
+ const distance=Math.max(27,(separation/2+11)/(Math.tan(halfFov)*camera.aspect));
+ orbit.target.set(targetX,targetY,targetZ);
+ camTween={
+  from:camera.position.clone(),
+  to:new THREE.Vector3(targetX+distance,targetY+distance*.15,targetZ-distance*.25),
+  start:performance.now()
+ };
+}
+function frameFocusedView(){
+ if(currentView==='cut')frameCutView();
+ if(currentView==='latch')frameLatchView();
 }
 function build(){
  if(root){scene.remove(root);root.traverse(o=>{if(o.geometry)o.geometry.dispose()});}
@@ -304,6 +421,7 @@ function build(){
  meshBox(cabinet,BW,T,BD,0,boxTop-T/2,boxCenterZ,cabinetMat,'Techo deposito');
  meshBox(cabinet,T,boxH,BD,-BW/2+T/2,(boxTop+bottom)/2,boxCenterZ,cabinetMat,'Lateral deposito izq');
  meshBox(cabinet,T,boxH,BD,BW/2-T/2,(boxTop+bottom)/2,boxCenterZ,cabinetMat,'Lateral deposito der');
+ buildLatches(wallAssembly,BW/2,boxFront);
  // Room-facing back door. Door hinge is on its left vertical side, opening towards the room.
  access=new THREE.Group();access.name='Puerta de recogida';access.position.set(-BW/2+.8,(boxTop+bottom)/2,boxBack-.8);cabinet.add(access);
  meshBox(access,BW-2,boxH-2,1.5,(BW-2)/2,0,0,(ghost||cut)?cabinetMat:mat.box,'Puerta interior opaca');
@@ -336,7 +454,7 @@ function build(){
  parcel=new THREE.Group();root.add(parcel);parcel.name='Paquete de prueba';
  meshBox(parcel,pack.w,pack.h,pack.d,0,0,0,mat.pkg,'Paquete');meshBox(parcel,pack.w,.35,2,0,pack.h/2+.2,0,mat.tape,'Cinta');
  // Guides: revolve around hinge and show conceptual fall towards bottom of the opaque deposit.
- guideGroup=new THREE.Group();guideGroup.visible=guides;wallAssembly.add(guideGroup);
+ guideGroup=new THREE.Group();guideGroup.visible=guides && currentView!=='latch';wallAssembly.add(guideGroup);
  cylinder(guideGroup,1.65,hingeWidth,0,hingeY,hingeZ,new THREE.MeshBasicMaterial({color:0x9c601e}));
  const s=packageOnTongue();const target=packageStored();const a=new THREE.Vector3(0,low+pack.h/2+6,front+pack.d/2+18);
  deliveryGuide=addLine(guideGroup,[a,s,new THREE.Vector3(0,low-5,hingeZ-p.tongueL*.55),target],0x177689);
@@ -418,7 +536,7 @@ function refreshGeometry(){
  $('message').textContent=removed
   ? 'Medidas actualizadas. Cajas retiradas por falta de espacio: '+removed+'.'
   : 'Medidas actualizadas. El depósito se ajustó a la abertura y a las ruedas.';
- if(document.querySelector('[data-view="cut"]').classList.contains('active'))frameCutView();
+ frameFocusedView();
 }
 const smooth=n=>{n=Math.max(0,Math.min(1,n));return n*n*(3-2*n)};
 function positionApproach(){return new THREE.Vector3(0,hingeY+pack.h/2+15,p.wallD/2+pack.d/2+20)};
@@ -497,16 +615,21 @@ function setTime(t){time=Math.max(0,Math.min(12,t));let a=0,which='none',mix=0,d
  if(deliveryCommitted && parcel)parcel.visible=false;
  $('timeline').value=time;$('clock').textContent=time.toFixed(1)+' / 12.0 s';$('phase').textContent=desc;
 }
-const views={outer:{position:[245,190,295],label:'Vista exterior',desc:'Tapa remetida ~20 cm desde la fachada. El canto del muro sirve de apoyo al abrir.'},inside:{position:[210,170,-320],label:'Vista interior de la casa',desc:'Gabinete negro opaco. La puerta permite retirar paquetes; cerrada oculta todo el contenido.'},cut:{label:'Corte lateral',desc:'El marco y su mecanismo quedan en el muro al retirar el depósito sobre ruedas.'},front:{position:[0,155,395],label:'Vista de fachada',desc:'Marco metálico fijo al muro con eje y tapa basculante.'},mechanism:{position:[260,175,140],label:'Vista del mecanismo',desc:'Activa el corte para inspeccionar el brazo exterior y la pestaña interior como una sola pieza.'}};
+const views={outer:{position:[245,190,295],label:'Vista exterior',desc:'Tapa remetida ~20 cm desde la fachada. El canto del muro sirve de apoyo al abrir.'},inside:{position:[210,170,-320],label:'Vista interior de la casa',desc:'Gabinete negro opaco. La puerta permite retirar paquetes; cerrada oculta todo el contenido.'},cut:{label:'Corte lateral',desc:'El marco y su mecanismo quedan en el muro al retirar el depósito sobre ruedas.'},front:{position:[0,155,395],label:'Vista de fachada',desc:'Marco metálico fijo al muro con eje y tapa basculante.'},latch:{label:'Detalle del cierre oculto',desc:'Corte del cierre derecho. Libera o fija el depósito para ver cómo la leva engancha el perno.'},mechanism:{position:[260,175,140],label:'Vista del mecanismo',desc:'Activa el corte para inspeccionar el brazo exterior y la pestaña interior como una sola pieza.'}};
 function selectView(key){
+ currentView=key;
  const v=views[key];
  if(key==='cut' || key==='inside'){
   cut=key==='cut';$('section').checked=cut;build();
  }
  $('viewTitle').textContent=v.label;$('viewDescription').textContent=v.desc;
+ $('latchKey').hidden=key!=='latch';
+ $('latchDetail').textContent=key==='latch'?'Volver al corte':'Detalle del cierre';
+ guideGroup.visible=guides && key!=='latch';
  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===key));
- if(key==='cut'){
-  frameCutView();
+ updateLatchMeshes();
+ if(key==='cut' || key==='latch'){
+  frameFocusedView();
  }else{
   const targetZ=key==='inside'?-cabinetOffset:0;
   const [x,y,z]=v.position;
@@ -514,11 +637,17 @@ function selectView(key){
   camTween={from:camera.position.clone(),to:new THREE.Vector3(x,y,z+targetZ),start:performance.now()};
  }
 }
-function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>selectView(b.dataset.view));
+function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>selectView(b.dataset.view==='latch' && currentView==='latch'?'cut':b.dataset.view));
+ $('latchToggle').onclick=()=>{
+  if(cabinetOffset>0)return;
+  cabinetLocked=!cabinetLocked;
+  updateLatchMeshes();
+  updateCabinetControls();
+ };
  $('cabinetOffset').oninput=e=>moveCabinet(+e.target.value);
  $('rollBack').onclick=()=>moveCabinet(60);
  $('dock').onclick=()=>moveCabinet(0);
- $('section').onchange=e=>{cut=e.target.checked;build();};$('ghost').onchange=e=>{ghost=e.target.checked;build();};$('guide').onchange=e=>{guides=e.target.checked;if(guideGroup)guideGroup.visible=guides;};
+ $('section').onchange=e=>{cut=e.target.checked;build();};$('ghost').onchange=e=>{ghost=e.target.checked;build();};$('guide').onchange=e=>{guides=e.target.checked;guideGroup.visible=guides && currentView!=='latch';};
  $('open').onclick=()=>{playing=false;setAngle(90);setStage('none');$('message').textContent='Tapa exterior horizontal sobre el canto; pestaña interior solidaria. Puedes editar ancho, longitud y espesor de la pestaña sin cambiar la tapa exterior.';};
  $('place').onclick=()=>{playing=false;setAngle(90);setStage('supported');$('message').textContent='Caja colocada sobre la pestaña interior. Para verificar una caja grande, inspecciona también la vista de corte lateral.';};
  $('close').onclick=()=>{playing=false;ensureSlot();setAngle(0);setStage('stored');commitDelivery();$('message').textContent='Caja mostrada dentro del depósito. El movimiento es ilustrativo, no una caída comprobada por física.';};
@@ -528,21 +657,22 @@ function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.
  $('nextDelivery').onclick=()=>prepareNext();
  $('clearPackages').onclick=()=>{stored=[];prepareNext();build();$('message').textContent='Depósito vaciado; ya puedes probar una secuencia nueva.';};
  $('pause').onclick=()=>playing=false;$('reset').onclick=()=>{playing=false;accessOpen=false;if(access)access.rotation.y=0;prepareNext();};$('timeline').oninput=e=>{playing=false;setTime(+e.target.value);}; document.querySelectorAll('[data-pack]').forEach(b=>b.onclick=()=>{pack={...PACKS[b.dataset.pack]};$('amazonBox').value='';for(const key of ['w','h','d'])$('pack_'+key).value=pack[key];document.querySelectorAll('[data-pack]').forEach(x=>x.classList.toggle('active',x===b));deliverySlot=null;deliveryBlocked=false;build();});
- $('save').onclick=()=>download(JSON.stringify({format:'buzon-3d-v13',units:'cm',dimensions:p,package:pack,cabinetOffset,storedPackages:stored.map(a=>a.original||({w:a.w,h:a.h,d:a.d})),technicalStatus:'conceptual, no validated physical collision'},null,2),'buzon-medidas-v13.json','application/json');
+ $('save').onclick=()=>download(JSON.stringify({format:'buzon-3d-v13',units:'cm',dimensions:p,package:pack,cabinetOffset,cabinetLocked,storedPackages:stored.map(a=>a.original||({w:a.w,h:a.h,d:a.d})),technicalStatus:'conceptual, no validated physical collision'},null,2),'buzon-medidas-v13.json','application/json');
  $('load').onclick=()=>$('loadfile').click();$('loadfile').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());
  for(const [key,,min,max]of dimDefs){if(Number.isFinite(j.dimensions?.[key]))p[key]=Math.max(min,Math.min(max,j.dimensions[key]));$('p_'+key).value=p[key];}for(const [key,,min,max]of packDefs){if(Number.isFinite(j.package?.[key]))pack[key]=Math.max(min,Math.min(max,j.package[key]));$('pack_'+key).value=pack[key];}
  syncCabinetDimensions();
  stored=[];for(const size of j.storedPackages||[]){if(['w','h','d'].every(k=>Number.isFinite(size[k])&&size[k]>0)){const slot=findStorageSlot(size);if(slot)stored.push(slot);}}
  const offset=$('cabinetOffset');
  cabinetOffset=Number.isFinite(j.cabinetOffset)?Math.max(0,Math.min(+offset.max,Math.round(j.cabinetOffset))):0;
+ cabinetLocked=cabinetOffset===0 && j.cabinetLocked!==false;
  updateCabinetControls();
  prepareNext();
  build();$('message').textContent='Medidas y cajas guardadas recuperadas.';
- if(document.querySelector('[data-view="cut"]').classList.contains('active'))frameCutView();}catch(err){$('message').textContent='No se pudo leer la configuración.';}e.target.value='';};
+ frameFocusedView();}catch(err){$('message').textContent='No se pudo leer la configuración.';}e.target.value='';};
  $('snapshot').onclick=()=>{renderer.render(scene,camera);const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='buzon-v13-vista.png';a.click();};
 }
 function download(text,name,type){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
-function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);if(document.querySelector('[data-view="cut"]').classList.contains('active'))frameCutView();}
+function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);frameFocusedView();}
 init();settingsUI();syncCabinetDimensions();initAmazonCatalog();buttonControls();updateCabinetControls();build();setTime(0);resize();window.addEventListener('resize',resize);
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.06,(now-prev)/1000);prev=now;if(playing){setTime(time+dt*speed);if(time>=12)playing=false;}if(camTween){const u=Math.min(1,(now-camTween.start)/600);camera.position.lerpVectors(camTween.from,camTween.to,smooth(u));if(u>=1)camTween=null;}orbit.update();renderer.render(scene,camera);}requestAnimationFrame(animate);
 </script></body></html>
