@@ -16,7 +16,7 @@
 .amazon-catalog select{width:100%;max-width:100%;background:#101c29;color:#e4f7f3;border:1px solid #5a7a8a;border-radius:7px;padding:10px 8px;cursor:pointer}
 
 /* V14 · Estudio luminoso en gris muy tenue: el modelo y su mecanismo quedan intactos */
-:root{color-scheme:light;--bg:#edf1f5;--panel:#ffffff;--edge:#d6e0e8;--soft:#50677a;--mint:#126b61;--txt:#263645}
+:root{color-scheme:light;--bg:#edf1f5;--panel:#ffffff;--edge:#d6e0e8;--soft:#50677a;--mint:#126b61;--txt:#263645;--scene-top:#f8f9fa;--scene-bottom:#e5e9ee}
 body{background:var(--bg);color:var(--txt)}
 header{background:#fff;border-color:#d6e0e8;box-shadow:0 1px 3px #2e44510b}
 header small,.muted,.muted2,.tiny,.legend{color:#566d7d}
@@ -39,7 +39,7 @@ button:hover{background:#dcebf0}
 .param-head span,.param-hint{color:#597383}
 .package-panel{background:#f5f9fb;border-color:#c8dbe4}
 .amazon-catalog{background:#eaf2f6;border-color:#cfdee7}
-.viewport{background:radial-gradient(ellipse at 45% 42%,#ffffff 0%,#f1f4f7 70%,#e6ebf0 100%)}
+.viewport{background:linear-gradient(var(--scene-top),var(--scene-bottom))}
 .overlay{background:#fffffff0;border-color:#d5e0e8;box-shadow:0 4px 15px #455c7014}
 .overlay strong{color:#21695e}
 .overlay p{color:#445d6f}
@@ -116,7 +116,22 @@ const mat={wall:new THREE.MeshStandardMaterial({color:0x8893a1,roughness:1}),fra
 function meshBox(parent,w,h,d,x,y,z,m,name=''){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.name=name;parent.add(o);return o}
 function cylinder(parent,r,len,x,y,z,m){const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,20),m);o.position.set(x,y,z);o.rotation.z=PI/2;parent.add(o);return o;}
 function addLine(parent,points,color=0x80d5f1){const geo=new THREE.BufferGeometry().setFromPoints(points);const line=new THREE.Line(geo,new THREE.LineDashedMaterial({color,dashSize:5,gapSize:2}));line.computeLineDistances();parent.add(line);return line;}
-function init(){scene=new THREE.Scene();scene.background=new THREE.Color(0xf1f4f7);camera=new THREE.PerspectiveCamera(44,1,.1,2200);camera.position.set(260,200,310);renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setClearColor(0xf1f4f7);$('canvas').appendChild(renderer.domElement);orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.target.set(0,115,0);const amb=new THREE.AmbientLight(0xffffff,.76);scene.add(amb);const sun=new THREE.DirectionalLight(0xffffff,1.4);sun.position.set(180,350,250);scene.add(sun);const fill=new THREE.DirectionalLight(0x93b6ff,.48);fill.position.set(-130,280,-220);scene.add(fill);const grid=new THREE.GridHelper(650,26,0xc3ccd4,0xdce3e9);grid.position.y=0;scene.add(grid);}
+function makeSceneBackground(){
+ const styles=getComputedStyle($('canvas'));
+ const background=document.createElement('canvas');
+ background.width=2;
+ background.height=512;
+ const context=background.getContext('2d');
+ const gradient=context.createLinearGradient(0,0,0,background.height);
+ gradient.addColorStop(0,styles.getPropertyValue('--scene-top').trim());
+ gradient.addColorStop(1,styles.getPropertyValue('--scene-bottom').trim());
+ context.fillStyle=gradient;
+ context.fillRect(0,0,background.width,background.height);
+ const texture=new THREE.CanvasTexture(background);
+ texture.colorSpace=THREE.SRGBColorSpace;
+ return texture;
+}
+function init(){scene=new THREE.Scene();scene.background=makeSceneBackground();camera=new THREE.PerspectiveCamera(44,1,.1,2200);camera.position.set(260,200,310);renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));$('canvas').appendChild(renderer.domElement);orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.target.set(0,115,0);const amb=new THREE.AmbientLight(0xffffff,.76);scene.add(amb);const sun=new THREE.DirectionalLight(0xffffff,1.4);sun.position.set(180,350,250);scene.add(sun);const fill=new THREE.DirectionalLight(0x93b6ff,.48);fill.position.set(-130,280,-220);scene.add(fill);const grid=new THREE.GridHelper(650,26,0x9ca8b4,0xc2cbd4);grid.position.y=0;scene.add(grid);}
 function initAmazonCatalog(){
  const sel=$('amazonBox');
  const groups=[['Pequeñas · hasta 40 cm',0,40],['Medianas · más de 40 a 60 cm',40,60],
@@ -185,7 +200,7 @@ function build(){
  if(root){scene.remove(root);root.traverse(o=>{if(o.geometry)o.geometry.dispose()});}
  root=new THREE.Group();scene.add(root);
  const W=p.openingW,H=p.openingH,D=p.wallD,F=p.frameW,front=D/2,rear=-D/2,low=p.entryY,high=low+H,wallTop=Math.max(265,high+60),span=Math.max(280,W+165),sideW=(span-W)/2;
- const wallMat=cut?new THREE.MeshStandardMaterial({color:0x8593a2,roughness:1,transparent:true,opacity:.22}):mat.wall;
+ const wallMat=cut?new THREE.MeshStandardMaterial({color:0x8593a2,roughness:1,transparent:true,opacity:.32}):mat.wall;
  const left=meshBox(root,sideW,wallTop,D,-W/2-sideW/2,wallTop/2,0,wallMat,'Muro izquierdo');
  const right=meshBox(root,sideW,wallTop,D,W/2+sideW/2,wallTop/2,0,wallMat,'Muro derecho');
  meshBox(root,W,wallTop-high,D,0,(wallTop+high)/2,0,wallMat,'Muro sobre abertura');
@@ -210,7 +225,7 @@ function build(){
  meshBox(pivot,lidW*.33,.8,2,0,lidH*.78,2,mat.handle,'Manija de depósito');
  // Cabinet behind inner face of wall. Closed on all sides except its access door on room side.
  boxFront=rear-2;boxBack=boxFront-p.boxD;boxCenterZ=(boxFront+boxBack)/2;const bottom=p.boxFloor;boxTop=bottom+p.boxH;const boxH=p.boxH,T=1.4,BW=p.boxW,BD=p.boxD;
- const cabinetMat=(ghost||cut)?new THREE.MeshStandardMaterial({color:0x425469,roughness:.6,transparent:true,opacity:cut?.13:.16,depthWrite:false,side:THREE.DoubleSide}):mat.box;
+ const cabinetMat=(ghost||cut)?new THREE.MeshStandardMaterial({color:0x425469,roughness:.6,transparent:true,opacity:cut?.20:.24,depthWrite:false,side:THREE.DoubleSide}):mat.box;
  meshBox(root,BW,T,BD,0,bottom+T/2,boxCenterZ,cabinetMat,'Piso deposito');
  meshBox(root,BW,T,BD,0,boxTop-T/2,boxCenterZ,cabinetMat,'Techo deposito');
  meshBox(root,T,boxH,BD,-BW/2+T/2,(boxTop+bottom)/2,boxCenterZ,cabinetMat,'Lateral deposito izq');
@@ -249,9 +264,9 @@ function build(){
  meshBox(parcel,pack.w,pack.h,pack.d,0,0,0,mat.pkg,'Paquete');meshBox(parcel,pack.w,.35,2,0,pack.h/2+.2,0,mat.tape,'Cinta');
  // Guides: revolve around hinge and show conceptual fall towards bottom of the opaque deposit.
  guideGroup=new THREE.Group();guideGroup.visible=guides;root.add(guideGroup);
- cylinder(guideGroup,1.65,W+17,0,hingeY,hingeZ,new THREE.MeshBasicMaterial({color:0xffd071}));
+ cylinder(guideGroup,1.65,W+17,0,hingeY,hingeZ,new THREE.MeshBasicMaterial({color:0x9c601e}));
  const s=packageOnTongue();const target=packageStored();const a=new THREE.Vector3(0,low+pack.h/2+6,front+pack.d/2+18);
- addLine(guideGroup,[a,s,new THREE.Vector3(0,low-5,hingeZ-p.tongueL*.55),target],0x76ddf0);
+ addLine(guideGroup,[a,s,new THREE.Vector3(0,low-5,hingeZ-p.tongueL*.55),target],0x177689);
  setAngle(theta);updateParcel();renderStored();updateChecks();updateStoredStatus();
 }
 function setAngle(a){theta=Math.max(0,Math.min(90,a));if(pivot)pivot.rotation.x=theta*PI/180;$('angle').value=theta;$('angleText').textContent=Math.round(theta)+'°';}
@@ -297,7 +312,7 @@ function explainRejection(){
  if(!anyFit)return `No cabe con las orientaciones horizontales permitidas. Caja: ${pack.w} × ${pack.h} × ${pack.d} cm (ancho × alto × fondo). Espacio libre aproximado: ${w} × ${(b.top-b.floor).toFixed(1)} × ${d} cm. Prueba aumentar la profundidad del depósito o disminuir la caja.`;
  return 'El paquete cabe por dimensiones generales, pero no hay una posición libre compatible con las cajas ya almacenadas. Vacía el depósito o modifica sus dimensiones.';
 }
-function showDeliveryStatus(message,failed=false){const el=$('deliveryStatus');el.style.borderLeftColor=failed?'#f0a260':'#6ad6b8';el.innerHTML=message;}
+function showDeliveryStatus(message,failed=false){const el=$('deliveryStatus');el.style.borderLeftColor=failed?'#c98731':'#269b89';el.innerHTML=message;}
 function packageStored(){return deliverySlot?new THREE.Vector3(deliverySlot.x,deliverySlot.y,deliverySlot.z):new THREE.Vector3(0,p.boxFloor+pack.h/2+2,boxCenterZ);}
 function renderStored(){
  for(let i=0;i<stored.length;i++){
