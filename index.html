@@ -53,18 +53,40 @@ button:hover{background:#dcebf0}
 .detail-key{font-size:11px;color:var(--txt);margin-top:7px}.detail-key b{color:#126b61}
 .dimension-toggle{display:inline-flex;align-items:center;gap:5px;margin-top:7px;pointer-events:auto;color:#126b61;font-size:11px;font-weight:650;cursor:pointer}
 .dimension-toggle[hidden]{display:none}.dimension-toggle input{accent-color:#126b61;margin:0}
+.header-links{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:7px 12px}
+.header-links a,.hardware-links a,.back-link,.hardware-shortcut{color:#126b61;text-underline-offset:3px}
+.access-form{margin-top:8px}.access-form p{margin:4px 0}.access-form .buttons{align-items:center}
+.access-form input{width:78px;padding:6px 8px;letter-spacing:.18em;border:1px solid #a8b9c4;border-radius:6px;color:var(--txt);background:#fff}
+.export-options{margin:10px 0}.export-options summary{cursor:pointer;color:#465d6f}.export-options .buttons{margin-top:8px}
+.hardware{max-width:1200px;margin:auto;padding:32px 24px 40px;color:var(--txt)}
+.hardware header{padding:0 0 14px;background:none;box-shadow:none;align-items:flex-start}
+.hardware h2{margin:0;font-size:23px}.hardware p{line-height:1.55}
+.hardware-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+.hardware-card{background:#fff;border:1px solid var(--edge);border-radius:11px;padding:16px;min-width:0}
+.hardware-card h3{font-size:16px;margin:0}.hardware-card p{margin:6px 0 10px}
+.hardware-ref{font-weight:650;color:#126b61}.hardware-links{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.hardware-links button{font-size:11px;padding:6px 8px}
+@media(max-width:640px){.hardware{padding:24px 16px}.hardware-grid{grid-template-columns:1fr}.hardware header{flex-wrap:wrap}}
+@media print{.hardware{display:none}}
 </style></head><body>
-<header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V11 · catálogo Amazon y ruedas industriales · unidades en cm · unidades en cm</small></div><span class="pill">Modelo conceptual editable</span></header>
-<main><aside class="sidebar">
+<header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V11 · catálogo Amazon y ruedas industriales · unidades en cm · unidades en cm</small></div><div class="header-links"><span class="pill">Modelo conceptual editable</span><a href="#herrajes">Herrajes</a><a href="#exportar">Planos PDF</a></div></header>
+<main id="simulador"><aside class="sidebar">
 <div class="row"><strong>Simulación de entrega</strong><span class="pill" id="state">Cerrado</span></div>
 <h2>Animación y movimiento</h2>
 <div class="buttons"><button class="primary" id="play">▶ Reproducir entrega</button><button id="pause">Ⅱ Pausar</button><button id="reset">↺ Reiniciar</button></div>
-<div class="buttons" style="margin-top:8px"><button id="open">Abrir tapa</button><button id="place">Colocar caja</button><button id="close">Cerrar y depositar</button><button id="access">Abrir puerta interior</button></div>
+<div class="buttons" style="margin-top:8px"><button id="open">Abrir tapa</button><button id="place">Colocar caja</button><button id="close">Cerrar y depositar</button><button id="access" aria-expanded="false" aria-controls="accessForm">Abrir puerta interior</button></div>
+<form id="accessForm" class="card access-form" hidden>
+<label for="accessCode"><strong>Cerradura de combinación</strong></label>
+<p class="muted2" id="accessHint">Usa 1234 en la demostración.</p>
+<div class="buttons"><input id="accessCode" type="text" inputmode="numeric" maxlength="4" autocomplete="off" aria-describedby="accessHint accessError"><button type="submit">Desbloquear y abrir</button></div>
+<p id="accessError" class="bad" role="status" hidden>Combinación incorrecta.</p>
+</form>
 <h2>Depósito móvil sobre ruedas</h2>
 <div class="card latch-controls">
 <div class="row"><strong>Cierres ocultos</strong><span id="latchState" class="pill" role="status">Fijado al marco</span></div>
 <div class="buttons"><button id="latchToggle">Liberar depósito</button><button id="latchDetail" data-view="latch">Detalle del cierre</button></div>
 <p id="latchHelp" class="muted2"></p>
+<a class="hardware-shortcut" href="#herrajes-cierres">Ficha y compra del cierre</a>
 </div>
 <div class="row"><label for="cabinetOffset">Separación del muro</label><output id="cabinetOffsetText" class="status" for="cabinetOffset">0 cm</output></div>
 <input class="range" type="range" id="cabinetOffset" min="0" max="120" step="1" value="0">
@@ -96,14 +118,64 @@ button:hover{background:#dcebf0}
 <div class="row"><strong>Dimensiones por componente</strong><span class="pill">cm</span></div><p class="muted2">El ancho interior y la altura del depósito se calculan a partir de la abertura. La profundidad se puede ajustar. Las ruedas determinan la altura de la base sobre el piso.</p>
 <div id="dimensions"></div>
 <div class="card" id="checks" style="margin-top:10px">Preparando comprobaciones...</div>
-<h2>Guardar y exportar</h2><div class="buttons"><button id="save">Guardar medidas (.json)</button><button id="load">Cargar medidas</button><button id="snapshot">Imagen PNG</button></div><input id="loadfile" type="file" accept=".json,application/json" hidden>
+<h2 id="exportar">Planos y exportación</h2>
+<div class="buttons"><button class="primary" id="exportPdf">Descargar planos PDF</button><button id="snapshot">Imagen PNG</button></div>
+<p class="muted2" id="pdfStatus" role="status">Vistas acotadas, despieces y herrajes con las medidas actuales.</p>
+<details class="export-options"><summary>Guardar o recuperar una configuración (JSON)</summary>
+<div class="buttons"><button id="save">Guardar medidas (.json)</button><button id="load">Cargar medidas (.json)</button></div>
+<p class="muted2">El JSON conserva las medidas editables para continuar en el simulador.</p></details>
+<input id="loadfile" type="file" accept=".json,application/json" hidden>
 <p class="muted2" style="margin-top:20px">⚠️ La ubicación final y la acumulación de cajas son geométricas y aproximadas; NO constituyen una simulación dinámica de gravedad, choques o fricción. Las comprobaciones verifican límites geométricos básicos y NO garantizan que la caja deslice, caiga o permita el retorno. Antes de fabricar necesitaremos evaluar colisiones 3D, masa, fricción, gravedad, holguras, cargas, seguridad y hacer un prototipo físico. El plano de fabricación queda pendiente.</p>
 </aside><section class="viewport"><div id="canvas"></div><div class="overlay"><strong id="viewTitle">Vista exterior</strong><p id="viewDescription">Arrastra con el mouse para rotar y usa la rueda para acercarte. La tapa está remetida hasta la cara interior del muro.</p><label id="dimensionToggle" class="dimension-toggle"><input type="checkbox" id="showDimensions" checked> Mostrar cotas</label><div id="latchKey" class="detail-key" hidden><b>Verde</b> · leva del depósito<br><strong style="color:var(--txt)">Acero claro</strong> · receptor del marco y acceso Allen</div></div><div class="corner">Calle (+Z) · Casa (−Z)</div><div class="footer"><div class="row"><strong id="phase">Tapa cerrada, depósito oculto</strong><span id="clock" class="muted">0.0 / 12.0 s</span></div><input type="range" min="0" max="12" step="0.01" id="timeline" value="0"><div class="legend">El conjunto del muro incluye marco, eje, tapa y pestaña. El depósito con ruedas se retira hacia el interior para separarlo del conjunto fijo.</div></div></section></main>
+<section class="hardware" id="herrajes" aria-labelledby="hardwareTitle">
+<header><div><h2 id="hardwareTitle">Herrajes para comprar</h2><p>Referencias para cotizar las piezas comerciales del buzón. Confirma las medidas de montaje y el envío antes de pedirlas.</p></div><a class="back-link" href="#simulador">Volver al simulador</a></header>
+<div class="hardware-grid">
+<article class="hardware-card" id="herrajes-cierres" data-hardware>
+<h3 class="hardware-part">Cierres ocultos del depósito</h3>
+<p><strong class="hardware-quantity">2 juegos</strong> · <span class="hardware-ref">Southco R2-0055-17 + R2-0002-17</span></p>
+<p>Cada juego lleva un cierre en el depósito y un receptor en el marco. El kit TCH de Amazon usa las referencias <strong>R2-0055-02 + R2-0002-02</strong>. Se acciona con Allen de 8 mm.</p>
+<div class="hardware-links"><button id="catalogLatch" type="button">Ver cierre en 3D</button>
+<a href="https://southco.com/en_us_int/latches/draw-latches/concealed-draw-latches/r2r5-concealed-butt-joint-panel-fastening-latches" target="_blank" rel="noopener">Marca Southco</a>
+<a data-ficha href="https://media.southco.com/media/static/Literature/r2-r5.en.pdf#page=2" target="_blank" rel="noopener">Plano técnico PDF</a>
+<a href="https://www.biscoind.com/es-MX/southco" target="_blank" rel="noopener">Cotizar en Bisco México</a>
+<a href="https://www.amazon.com/dp/B07NJCXDXT" target="_blank" rel="noopener">Consultar Amazon EE. UU.</a></div>
+</article>
+<article class="hardware-card" data-hardware>
+<h3 class="hardware-part">Ruedas giratorias de poliuretano</h3>
+<p><strong class="hardware-quantity">4 ruedas</strong> · <span class="hardware-ref">TENTE Agila Light 1470PAO075P40 / 1477PAO075P40</span></p>
+<p>Dos sin freno (1470) y dos con freno total (1477). Diámetro de 75 mm, altura de montaje de 100 mm y placa de 60 × 60 mm. Verifica la carga del depósito lleno y el espacio para el giro.</p>
+<div class="hardware-links">
+<a href="https://www.tente.com/en-cr/swivel-castor-75-mm/1470pao075p40-tente" target="_blank" rel="noopener">TENTE sin freno</a>
+<a data-ficha href="https://www.tente.com/media/bc/54/b5/1773926445/TI_990900452_1477PAO075P40_Tente__es_ES.pdf?ts=1773926445" target="_blank" rel="noopener">Ficha con freno PDF</a>
+<a href="https://rodajasfragma.com/product-category/tente/" target="_blank" rel="noopener">Consultar Rodajas Fragma</a></div>
+</article>
+<article class="hardware-card" data-hardware>
+<h3 class="hardware-part">Cerradura de combinación</h3>
+<p><strong class="hardware-quantity">1 cerradura</strong> · <span class="hardware-ref">FJM Combi-Cam 7803S-BLK</span></p>
+<p>Cuatro diales mecánicos y bloqueo por leva para la puerta de recogida. La ficha admite hasta 9,5 mm de espesor en la zona de montaje. Prevé una placa de montaje del espesor adecuado y un tope para la leva.</p>
+<div class="hardware-links">
+<a href="https://www.fjmsecurity.com/product?id=7803-BLACK" target="_blank" rel="noopener">Modelo FJM</a>
+<a data-ficha href="https://www.fjmsecurity.com/mediadev/documents/FSPDS_7803.pdf" target="_blank" rel="noopener">Ficha técnica PDF</a>
+<a href="https://www.fjmsecurity.com/mediadev/documents/FSCMB_7803_Combination.pdf" target="_blank" rel="noopener">Ajustar la combinación</a>
+<a href="https://www.gokeyless.com/products/combi-cam-7803s-black-combination-lock" target="_blank" rel="noopener">Consultar GoKeyless</a></div>
+</article>
+<article class="hardware-card" data-hardware>
+<h3 class="hardware-part">Bisagras de la puerta interior</h3>
+<p><strong class="hardware-quantity">2 como referencia</strong> · <span class="hardware-ref">Southco 96-MA-80-24</span></p>
+<p>Bisagras atornillables de acero inoxidable. Usaría la configuración de montaje fijo que muestra la ficha. Confirma cantidad y refuerzos según el peso de la puerta. Son para la puerta de recogida del depósito.</p>
+<div class="hardware-links">
+<a href="https://southco.com/en_au_int/96-ma-80-24" target="_blank" rel="noopener">Modelo Southco</a>
+<a data-ficha href="https://media.southco.com/media/static/Literature/96.en.pdf" target="_blank" rel="noopener">Plano técnico PDF</a>
+<a href="https://www.biscoind.com/es-MX/southco" target="_blank" rel="noopener">Cotizar en Bisco México</a></div>
+</article>
+</div>
+</section>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 const $=id=>document.getElementById(id);const PI=Math.PI;
+const frameThickness=.25,cabinetWallThickness=1.4,dockingGap=2;
 const defaults={openingW:60,openingH:50,wallD:20,entryY:80,tongueL:30,tongueW:78.6,tongueT:.3,boxD:50,frameW:5,gap:.7,wheelD:7.5};
 const dimGroups=[
  {title:'01 · Muro y abertura de entrada',description:'Hueco por donde entra el paquete y posición respecto al piso.',
@@ -130,7 +202,7 @@ const PACKS={small:{w:25,h:15,d:12},medium:{w:40,h:18,d:18},large:{w:60,h:40,d:4
 let p={...defaults},pack={...PACKS.medium},theta=0,stage='none',progress=0,accessOpen=false,cut=true,ghost=true,guides=true,time=0,speed=1,playing=false,prev=performance.now();
 let scene,camera,renderer,orbit,root,cabinet,pivot,parcel,access,guideGroup,deliveryGuide,camTween=null,boxCenterZ=0,hingeZ=0,hingeY=0;
 let cabinetOffset=0,cabinetLocked=true,rollingMeshes=[];
-let currentView='outer',latchParts=[];
+let currentView='outer',latchParts=[],doorCam;
 let dimensions=[],viewportHeight=0;
 const dimensionFormat=new Intl.NumberFormat('es-MX',{maximumFractionDigits:2});
 const dimensionInk=new THREE.LineBasicMaterial({color:0x28776d,transparent:true,opacity:.88,depthTest:false,depthWrite:false});
@@ -475,13 +547,50 @@ function renderScene(){
  }
  renderer.render(scene,camera);
 }
+function makeDialFace(){
+ const canvas=document.createElement('canvas');
+ canvas.width=128;canvas.height=128;
+ const context=canvas.getContext('2d');
+ context.fillStyle='#242b33';
+ context.beginPath();context.arc(64,64,61,0,2*PI);context.fill();
+ context.strokeStyle='#647482';context.lineWidth=3;context.stroke();
+ context.font='bold 19px monospace';context.textAlign='center';context.textBaseline='middle';
+ for(const x of [28,52,76,100]){
+  context.fillStyle='#101923';context.fillRect(x-10,51,20,26);
+  context.fillStyle='#eaf3f8';context.fillText('0',x,65);
+ }
+ const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+ return new THREE.MeshBasicMaterial({map:texture,transparent:true});
+}
+const dialFace=makeDialFace();
+function buildCombinationLock(width,boxBack){
+ const x=width-5.5;
+ const body=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.5,.85,32),mat.inner);
+ body.rotation.x=PI/2;body.position.set(x,0,-1.18);body.name='Cerradura mecánica de combinación';access.add(body);
+ const dial=new THREE.Mesh(new THREE.PlaneGeometry(5,5),dialFace);
+ dial.rotation.y=PI;dial.position.set(x,0,-1.62);access.add(dial);
+ doorCam=new THREE.Group();
+ doorCam.position.set(x,0,1.15);access.add(doorCam);
+ meshBox(doorCam,4.2,1.25,.3,2.1,0,0,mat.latchSteel,'Leva de bloqueo de la puerta');
+ meshBox(cabinet,1.3,2.8,.8,width/2-1.15,access.position.y,boxBack+.7,mat.latchSteel,'Tope de la cerradura');
+}
+function setAccessOpen(open){
+ accessOpen=open;
+ access.rotation.y=open?.95:0;
+ doorCam.rotation.z=open?PI/2:0;
+ $('accessForm').hidden=true;
+ $('accessCode').value='';
+ $('accessError').hidden=true;
+ $('access').setAttribute('aria-expanded','false');
+ $('access').textContent=open?'Cerrar y bloquear puerta':'Abrir puerta interior';
+}
 function build(){
  if(root){scene.remove(root);root.traverse(o=>{if(o.isMesh || o.isLine)o.geometry.dispose()});}
  for(const {label} of dimensions){label.material.map.dispose();label.material.dispose();}
  dimensions=[];
  root=new THREE.Group();scene.add(root);
  const W=p.openingW,H=p.openingH,D=p.wallD,F=p.frameW,front=D/2,rear=-D/2,low=p.entryY,high=low+H,wallTop=Math.max(265,high+60),span=Math.max(280,W+165);
- const linerT=.25,recessW=W+2*linerT,recessTop=high+linerT;
+ const linerT=frameThickness,recessW=W+2*linerT,recessTop=high+linerT;
  buildWall(span,wallTop,recessW,low,recessTop,D);
 
  const wallAssembly=new THREE.Group();wallAssembly.name='01 · Conjunto fijo del muro';root.add(wallAssembly);
@@ -518,9 +627,9 @@ function build(){
  // The cabinet has an open wall-facing side and rolls into the house as one assembly.
  cabinet=new THREE.Group();cabinet.name='02 · Depósito móvil';root.add(cabinet);
  rollingMeshes=[];
- const boxFront=rear-2,boxBack=boxFront-p.boxD;
+ const boxFront=rear-dockingGap,boxBack=boxFront-p.boxD;
  boxCenterZ=(boxFront+boxBack)/2;
- const bottom=p.boxFloor,boxTop=p.boxTop,boxH=p.boxH,T=1.4,BW=p.boxW+2*T,BD=p.boxD;
+ const bottom=p.boxFloor,boxTop=p.boxTop,boxH=p.boxH,T=cabinetWallThickness,BW=p.boxW+2*T,BD=p.boxD;
  const cabinetMat=(ghost||cut)?new THREE.MeshStandardMaterial({color:0x425469,roughness:.6,transparent:true,opacity:cut?.20:.24,depthWrite:false,side:THREE.DoubleSide}):mat.box;
  meshBox(cabinet,BW,T,BD,0,bottom+T/2,boxCenterZ,cabinetMat,'Piso deposito');
  meshBox(cabinet,BW,T,BD,0,boxTop-T/2,boxCenterZ,cabinetMat,'Techo deposito');
@@ -530,9 +639,10 @@ function build(){
  // Room-facing back door. Door hinge is on its left vertical side, opening towards the room.
  access=new THREE.Group();access.name='Puerta de recogida';access.position.set(-BW/2+.8,(boxTop+bottom)/2,boxBack-.8);cabinet.add(access);
  meshBox(access,BW-2,boxH-2,1.5,(BW-2)/2,0,0,(ghost||cut)?cabinetMat:mat.box,'Puerta interior opaca');
- const handle=meshBox(access,1.5,4,2.5,BW-11,0,-2,mat.handle,'Cerradura puerta interior');
+ buildCombinationLock(BW,boxBack);
  for(const yy of [-boxH*.3,boxH*.3])cylinder(access,1.2,7,0,yy,0,mat.handle).rotation.set(0,0,0);
  access.rotation.y=accessOpen?.95:0;
+ doorCam.rotation.z=accessOpen?PI/2:0;
 
  // Four plate-mounted caster assemblies, centered under the closed deposit cabinet.
  // Diameter is nominal; total installation height is size-specific and indicative.
@@ -572,8 +682,8 @@ function packageOnTongue(){const location=Math.min(p.tongueL*.55,Math.max(pack.d
 function insideLimits(){
  const margin=3;
  return {xmin:-p.boxW/2+margin,xmax:p.boxW/2-margin,
-         zmin:(-p.wallD/2-2-p.boxD)+margin,zmax:(-p.wallD/2-2)-margin,
-         floor:p.boxFloor+1.4,top:p.boxTop-2};
+         zmin:(-p.wallD/2-dockingGap-p.boxD)+margin,zmax:(-p.wallD/2-dockingGap)-margin,
+         floor:p.boxFloor+cabinetWallThickness,top:p.boxTop-2};
 }
 function overlaps2D(a,b){
  return Math.abs(a.x-b.x)*2 < a.w+b.w+1.5 && Math.abs(a.z-b.z)*2 < a.d+b.d+1.5;
@@ -758,12 +868,37 @@ function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.
  $('open').onclick=()=>{playing=false;setAngle(90);setStage('none');$('message').textContent='Tapa exterior horizontal sobre el canto; pestaña interior solidaria. Puedes editar ancho, longitud y espesor de la pestaña sin cambiar la tapa exterior.';};
  $('place').onclick=()=>{playing=false;setAngle(90);setStage('supported');$('message').textContent='Caja colocada sobre la pestaña interior. Para verificar una caja grande, inspecciona también la vista de corte lateral.';};
  $('close').onclick=()=>{playing=false;ensureSlot();setAngle(0);setStage('stored');commitDelivery();$('message').textContent='Caja mostrada dentro del depósito. El movimiento es ilustrativo, no una caída comprobada por física.';};
- $('access').onclick=()=>{accessOpen=!accessOpen;if(access)access.rotation.y=accessOpen?.95:0;selectView('inside');$('message').textContent=accessOpen?'Puerta interior abierta: la caja solo es accesible desde dentro de la propiedad.':'Puerta interior cerrada: gabinete opaco y protegido.';};
+ $('catalogLatch').onclick=()=>{
+  selectView('latch');
+  $('simulador').scrollIntoView({block:'start'});
+ };
+ $('access').onclick=()=>{
+  selectView('inside');
+  if(accessOpen){
+   setAccessOpen(false);
+   $('message').textContent='Puerta interior cerrada y bloqueada.';
+  }else{
+   $('accessForm').hidden=false;
+   $('access').setAttribute('aria-expanded','true');
+   $('accessCode').focus();
+  }
+ };
+ $('accessForm').onsubmit=e=>{
+  e.preventDefault();
+  if($('accessCode').value.trim()!=='1234'){
+   $('accessError').hidden=false;
+   $('accessCode').select();
+   return;
+  }
+  setAccessOpen(true);
+  $('message').textContent='Combinación correcta. Puerta interior desbloqueada y abierta.';
+ };
+ $('accessCode').oninput=()=>$('accessError').hidden=true;
  $('angle').oninput=e=>{playing=false;setAngle(+e.target.value);updateParcel();};
- $('play').onclick=()=>{if(deliveryCommitted)prepareNext();if(time>=11.99)setTime(0);playing=true;accessOpen=false;if(access)access.rotation.y=0;$('message').textContent='Secuencia ilustrativa: abrir tapa, apoyar paquete sobre pestaña, cerrar y depositar dentro de gabinete.';};
+ $('play').onclick=()=>{if(deliveryCommitted)prepareNext();if(time>=11.99)setTime(0);playing=true;setAccessOpen(false);$('message').textContent='Secuencia ilustrativa: abrir tapa, apoyar paquete sobre pestaña, cerrar y depositar dentro de gabinete.';};
  $('nextDelivery').onclick=()=>prepareNext();
  $('clearPackages').onclick=()=>{stored=[];prepareNext();build();$('message').textContent='Depósito vaciado; ya puedes probar una secuencia nueva.';};
- $('pause').onclick=()=>playing=false;$('reset').onclick=()=>{playing=false;accessOpen=false;if(access)access.rotation.y=0;prepareNext();};$('timeline').oninput=e=>{playing=false;setTime(+e.target.value);}; document.querySelectorAll('[data-pack]').forEach(b=>b.onclick=()=>{pack={...PACKS[b.dataset.pack]};$('amazonBox').value='';for(const key of ['w','h','d'])$('pack_'+key).value=pack[key];document.querySelectorAll('[data-pack]').forEach(x=>x.classList.toggle('active',x===b));deliverySlot=null;deliveryBlocked=false;build();});
+ $('pause').onclick=()=>playing=false;$('reset').onclick=()=>{playing=false;setAccessOpen(false);prepareNext();};$('timeline').oninput=e=>{playing=false;setTime(+e.target.value);}; document.querySelectorAll('[data-pack]').forEach(b=>b.onclick=()=>{pack={...PACKS[b.dataset.pack]};$('amazonBox').value='';for(const key of ['w','h','d'])$('pack_'+key).value=pack[key];document.querySelectorAll('[data-pack]').forEach(x=>x.classList.toggle('active',x===b));deliverySlot=null;deliveryBlocked=false;build();});
  $('save').onclick=()=>download(JSON.stringify({format:'buzon-3d-v13',units:'cm',dimensions:p,package:pack,cabinetOffset,cabinetLocked,storedPackages:stored.map(a=>a.original||({w:a.w,h:a.h,d:a.d})),technicalStatus:'conceptual, no validated physical collision'},null,2),'buzon-medidas-v13.json','application/json');
  $('load').onclick=()=>$('loadfile').click();$('loadfile').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());
  for(const [key,,min,max]of dimDefs){if(Number.isFinite(j.dimensions?.[key]))p[key]=Math.max(min,Math.min(max,j.dimensions[key]));$('p_'+key).value=p[key];}for(const [key,,min,max]of packDefs){if(Number.isFinite(j.package?.[key]))pack[key]=Math.max(min,Math.min(max,j.package[key]));$('pack_'+key).value=pack[key];}
@@ -776,6 +911,27 @@ function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.
  prepareNext();
  build();$('message').textContent='Medidas y cajas guardadas recuperadas.';
  frameFocusedView();}catch(err){$('message').textContent='No se pudo leer la configuración.';}e.target.value='';};
+ $('exportPdf').onclick=async()=>{
+  const button=$('exportPdf'),status=$('pdfStatus');
+  const measures={...p,lidW:p.openingW-2*p.gap,lidH:p.openingH-2*p.gap,tongueW:tongueWidth(),
+   frameThickness,cabinetWallThickness,dockingGap,latchY:latchHeight()};
+  const hardware=[...document.querySelectorAll('[data-hardware]')].map(card=>({
+   part:card.querySelector('.hardware-part').textContent,qty:card.querySelector('.hardware-quantity').textContent,
+   ref:card.querySelector('.hardware-ref').textContent,url:card.querySelector('[data-ficha]').href
+  }));
+  button.disabled=true;
+  status.textContent='Preparando el PDF…';
+  try{
+   const {createPlans}=await import('./planos.js');
+   download(createPlans(measures,hardware),'buzon-planos.pdf','application/pdf');
+   status.textContent='PDF listo con cinco láminas.';
+  }catch(error){
+   console.error(error);
+   status.textContent='No se pudo generar el PDF. Vuelve a pulsar Descargar planos PDF.';
+  }finally{
+   button.disabled=false;
+  }
+ };
  $('snapshot').onclick=()=>{renderScene();const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='buzon-v13-vista.png';a.click();};
 }
 function download(text,name,type){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
