@@ -487,20 +487,18 @@ function addDimension(parent,title,value,from,to,displacement){
  const canvas=document.createElement('canvas'),context=canvas.getContext('2d');
  const font='600 12px system-ui, sans-serif';
  context.font=font;
- const width=Math.ceil(context.measureText(caption).width)+16,height=22;
+ const width=Math.ceil(context.measureText(caption).width)+8,height=20;
  canvas.width=width*2;
  canvas.height=height*2;
  context.scale(2,2);
- context.beginPath();
- context.roundRect(.5,.5,width-1,height-1,6);
- context.fillStyle='#f8fafc';
- context.fill();
- context.strokeStyle='#86aaa4';
- context.stroke();
  context.font=font;
  context.textBaseline='middle';
+ context.lineJoin='round';
+ context.lineWidth=2.5;
+ context.strokeStyle='#f8fafc';
+ context.strokeText(caption,4,height/2);
  context.fillStyle='#144f48';
- context.fillText(caption,8,height/2);
+ context.fillText(caption,4,height/2);
  const texture=new THREE.CanvasTexture(canvas);
  texture.colorSpace=THREE.SRGBColorSpace;
  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,depthTest:false,depthWrite:false,toneMapped:false}));
@@ -508,42 +506,54 @@ function addDimension(parent,title,value,from,to,displacement){
  label.name=caption;
  label.renderOrder=11;
  group.add(label);
- dimensions.push({group,label,a,b,width,height});
+ dimensions.push({group,label,a,b,offset,width,height});
 }
 function buildDimensions(front,rear,boxFront,boxBack,boxHalfWidth){
  const half=p.openingW/2,low=p.entryY,high=low+p.openingH;
- addDimension(root,'Ancho',p.openingW,[-half,high,front],[half,high,front],[0,18,1]);
- addDimension(root,'Alto',p.openingH,[-half,low,front],[-half,high,front],[-17,0,1]);
- addDimension(root,'Entrada',low,[-half,0,front],[-half,low,front],[-26,0,1]);
- addDimension(root,'Muro',p.wallD,[half,high,front],[half,high,rear],[13,30,0]);
- addDimension(cabinet,'Fondo',p.boxD,[boxHalfWidth,p.boxFloor,boxFront],[boxHalfWidth,p.boxFloor,boxBack],[16,19,0]);
- addDimension(cabinet,'Total',p.boxTop,[boxHalfWidth,0,boxBack],[boxHalfWidth,p.boxTop,boxBack],[30,0,0]);
+ addDimension(root,'Ancho',p.openingW,[-half,high,front],[half,high,front],[0,27,1]);
+ addDimension(root,'Alto',p.openingH,[-half,low,front],[-half,high,front],[-19,0,22]);
+ addDimension(root,'Entrada',low,[-half,0,front],[-half,low,front],[-22,0,22]);
+ addDimension(root,'Muro',p.wallD,[half,high,front],[half,high,rear],[28,23,0]);
+ addDimension(cabinet,'Fondo',p.boxD,[boxHalfWidth,p.boxFloor,boxFront],[boxHalfWidth,p.boxFloor,boxBack],[37,26,0]);
+ addDimension(cabinet,'Total',p.boxTop,[boxHalfWidth,0,boxBack],[boxHalfWidth,p.boxTop,boxBack],[26,0,0]);
 }
 const labelWorld=new THREE.Vector3(),labelScreen=new THREE.Vector3();
-const startScreen=new THREE.Vector3(),endScreen=new THREE.Vector3();
+const startScreen=new THREE.Vector3(),endScreen=new THREE.Vector3(),anchorScreen=new THREE.Vector3();
 function renderScene(){
  camera.updateMatrixWorld();
  const visible=$('showDimensions').checked && currentView!=='latch' && viewportHeight>0;
  const screenWidth=viewportHeight*camera.aspect;
  const worldPerPixel=2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/viewportHeight;
  const occupied=[];
- for(const {group,label,a,b,width,height} of dimensions){
+ for(const {group,label,a,b,offset,width,height} of dimensions){
   group.visible=false;
   if(!visible || (!cut && group.parent===cabinet && camera.position.z>p.wallD/2))continue;
   group.updateWorldMatrix(true,false);
   startScreen.copy(a).applyMatrix4(group.matrixWorld).project(camera);
   endScreen.copy(b).applyMatrix4(group.matrixWorld).project(camera);
-  const length=Math.hypot((startScreen.x-endScreen.x)*screenWidth,(startScreen.y-endScreen.y)*viewportHeight)/2;
+  const dx=(endScreen.x-startScreen.x)*screenWidth/2;
+  const dy=(startScreen.y-endScreen.y)*viewportHeight/2;
+  const length=Math.hypot(dx,dy);
   labelWorld.copy(label.position).applyMatrix4(group.matrixWorld);
   labelScreen.copy(labelWorld).project(camera);
   const x=(labelScreen.x+1)*screenWidth/2,y=(1-labelScreen.y)*viewportHeight/2;
   const scale=-labelWorld.applyMatrix4(camera.matrixWorldInverse).z*worldPerPixel;
-  if(length<18 || length*scale<a.distanceTo(b)*.28 || labelScreen.z<-1 || labelScreen.z>1)continue;
-  if(x<width/2 || x>screenWidth-width/2 || y<height/2 || y>viewportHeight-height/2)continue;
-  if(occupied.some(other=>Math.abs(other.x-x)<(other.width+width)/2+4 && Math.abs(other.y-y)<height+4))continue;
+  if(length<11 || length*scale<a.distanceTo(b)*.28 || labelScreen.z<-1 || labelScreen.z>1)continue;
+
+  // Put the text on the outward side of its ruler without covering the line.
+  anchorScreen.copy(label.position).sub(offset).applyMatrix4(group.matrixWorld).project(camera);
+  const nx=-dy/length,ny=dx/length;
+  const outward=nx*(labelScreen.x-anchorScreen.x)*screenWidth+ny*(anchorScreen.y-labelScreen.y)*viewportHeight;
+  const clearance=(Math.abs(nx)*width+Math.abs(ny)*height)/2+3;
+  const sign=Math.sign(outward)||1;
+  const shiftX=nx*clearance*sign,shiftY=ny*clearance*sign;
+  const textX=x+shiftX,textY=y+shiftY;
+  if(textX<width/2 || textX>screenWidth-width/2 || textY<height/2 || textY>viewportHeight-height/2)continue;
+  if(occupied.some(other=>Math.abs(other.x-textX)<(other.width+width)/2+4 && Math.abs(other.y-textY)<height+4))continue;
+  label.center.set(.5-shiftX/width,.5+shiftY/height);
   label.scale.set(width*scale,height*scale,1);
   group.visible=true;
-  occupied.push({x,y,width});
+  occupied.push({x:textX,y:textY,width});
  }
  renderer.render(scene,camera);
 }
@@ -935,7 +945,7 @@ function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.
  $('snapshot').onclick=()=>{renderScene();const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='buzon-v13-vista.png';a.click();};
 }
 function download(text,name,type){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
-function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;viewportHeight=h;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);frameFocusedView();}
+function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;viewportHeight=h;camera.aspect=w/h;camera.fov=w<480?51:44;camera.updateProjectionMatrix();renderer.setSize(w,h);frameFocusedView();}
 init();settingsUI();syncCabinetDimensions();initAmazonCatalog();buttonControls();updateCabinetControls();build();setTime(0);resize();window.addEventListener('resize',resize);
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.06,(now-prev)/1000);prev=now;if(playing){setTime(time+dt*speed);if(time>=12)playing=false;}if(camTween){const u=Math.min(1,(now-camTween.start)/600);camera.position.lerpVectors(camTween.from,camTween.to,smooth(u));if(u>=1)camTween=null;}orbit.update();renderScene();}requestAnimationFrame(animate);
 </script></body></html>
