@@ -505,14 +505,33 @@ function addDimension(parent,title,value,from,to,displacement){
  group.add(label);
  dimensions.push({group,label,a,b,offset,width,height});
 }
-function buildDimensions(front,rear,boxFront,boxBack,boxHalfWidth){
+function clearDimensions(){
+ for(const {group,label} of dimensions){
+  group.removeFromParent();
+  for(const child of group.children)if(child.isLine)child.geometry.dispose();
+  label.material.map.dispose();
+  label.material.dispose();
+ }
+ dimensions=[];
+}
+function buildDimensions(){
+ clearDimensions();
  const half=p.openingW/2,low=p.entryY,high=low+p.openingH;
- addDimension(root,'Ancho',p.openingW,[-half,high,front],[half,high,front],[0,27,1]);
- addDimension(root,'Alto',p.openingH,[-half,low,front],[-half,high,front],[-19,0,22]);
- addDimension(root,'Entrada',low,[-half,0,front],[-half,low,front],[-22,0,22]);
- addDimension(root,'Muro',p.wallD,[half,high,front],[half,high,rear],[28,23,0]);
- addDimension(cabinet,'Fondo',p.boxD,[boxHalfWidth,p.boxFloor,boxFront],[boxHalfWidth,p.boxFloor,boxBack],[37,26,0]);
- addDimension(cabinet,'Total',p.boxTop,[boxHalfWidth,0,boxBack],[boxHalfWidth,p.boxTop,boxBack],[26,0,0]);
+ const front=p.wallD/2,rear=-front,boxFront=rear-dockingGap,boxBack=boxFront-p.boxD;
+ const boxHalfWidth=half+cabinetWallThickness;
+ const wide=THREE.MathUtils.clamp(($('canvas').clientWidth-400)/500,0,1);
+ const space=(compact,desktop)=>compact.map((value,i)=>THREE.MathUtils.lerp(value,desktop[i],wide));
+ const lateral=currentView==='cut';
+ addDimension(root,'Ancho',p.openingW,[-half,high,front],[half,high,front],space([0,41,1],[0,64,1]));
+ const left=lateral?space([-9,0,32],[-9,0,62]):space([-23,0,24],[-57,0,31]);
+ addDimension(root,'Alto',p.openingH,[-half,low,front],[-half,high,front],left);
+ addDimension(root,'Entrada',low,[-half,0,front],[-half,low,front],left);
+ const wallSpace=lateral?space([8,18,0],[12,22,0]):space([24,38,0],[41,65,0]);
+ addDimension(root,'Muro',p.wallD,[half,high,front],[half,high,rear],wallSpace);
+ const depthSpace=lateral?space([16,-6,0],[16,-24,0]):space([39,26,0],[72,26,0]);
+ addDimension(cabinet,'Fondo',p.boxD,[boxHalfWidth,p.boxFloor,boxFront],[boxHalfWidth,p.boxFloor,boxBack],depthSpace);
+ const heightSpace=lateral?space([12,0,-16],[20,0,-43]):space([14,0,0],[72,0,0]);
+ addDimension(cabinet,'Total',p.boxTop,[boxHalfWidth,0,boxBack],[boxHalfWidth,p.boxTop,boxBack],heightSpace);
 }
 const labelWorld=new THREE.Vector3(),labelScreen=new THREE.Vector3();
 const startScreen=new THREE.Vector3(),endScreen=new THREE.Vector3(),anchorScreen=new THREE.Vector3();
@@ -592,9 +611,8 @@ function setAccessOpen(open){
  $('access').textContent=open?'Cerrar y bloquear puerta':'Abrir puerta interior';
 }
 function build(){
+ clearDimensions();
  if(root){scene.remove(root);root.traverse(o=>{if(o.isMesh || o.isLine)o.geometry.dispose()});}
- for(const {label} of dimensions){label.material.map.dispose();label.material.dispose();}
- dimensions=[];
  root=new THREE.Group();scene.add(root);
  const W=p.openingW,H=p.openingH,D=p.wallD,F=p.frameW,front=D/2,rear=-D/2,low=p.entryY,high=low+H,wallTop=Math.max(265,high+60),span=Math.max(280,W+165);
  const linerT=frameThickness,recessW=W+2*linerT,recessTop=high+linerT;
@@ -680,7 +698,7 @@ function build(){
  cylinder(guideGroup,1.65,hingeWidth,0,hingeY,hingeZ,new THREE.MeshBasicMaterial({color:0x9c601e}));
  const s=packageOnTongue();const target=packageStored();const a=new THREE.Vector3(0,low+pack.h/2+6,front+pack.d/2+18);
  deliveryGuide=addLine(guideGroup,[a,s,new THREE.Vector3(0,low-5,hingeZ-p.tongueL*.55),target],0x177689);
- buildDimensions(front,rear,boxFront,boxBack,BW/2);
+ buildDimensions();
  positionCabinet();
  setAngle(theta);updateParcel();stored.forEach(renderStoredPackage);updateChecks();updateStoredStatus();
 }
@@ -840,10 +858,13 @@ function setTime(t){time=Math.max(0,Math.min(12,t));let a=0,which='none',mix=0,d
 }
 const views={outer:{position:[245,190,295],label:'Vista exterior',desc:'La tapa queda remetida en la cara interior del muro. El canto sirve de apoyo al abrir.'},inside:{position:[210,170,-320],label:'Vista interior de la casa',desc:'Gabinete negro opaco. La puerta permite retirar paquetes; cerrada oculta todo el contenido.'},cut:{label:'Corte lateral',desc:'El marco y su mecanismo quedan en el muro al retirar el depósito sobre ruedas.'},front:{position:[0,155,395],label:'Vista de fachada',desc:'Marco metálico fijo al muro con eje y tapa basculante.'},latch:{label:'Detalle del cierre oculto',desc:'Corte del cierre derecho. Libera o fija el depósito para ver cómo la leva engancha el perno.'},mechanism:{position:[260,175,140],label:'Vista del mecanismo',desc:'Activa el corte para inspeccionar el brazo exterior y la pestaña interior como una sola pieza.'}};
 function selectView(key){
+ const wasLateral=currentView==='cut';
  currentView=key;
  const v=views[key];
  if(key==='cut' || key==='inside'){
   cut=key==='cut';$('section').checked=cut;build();
+ }else if(wasLateral){
+  buildDimensions();
  }
  $('viewTitle').textContent=v.label;$('viewDescription').textContent=v.desc;
  $('latchKey').hidden=key!=='latch';
@@ -942,7 +963,7 @@ function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.
  $('snapshot').onclick=()=>{renderScene();const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='buzon-v13-vista.png';a.click();};
 }
 function download(text,name,type){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
-function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;viewportHeight=h;camera.aspect=w/h;camera.fov=w<480?51:44;camera.updateProjectionMatrix();renderer.setSize(w,h);frameFocusedView();}
+function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;viewportHeight=h;camera.aspect=w/h;camera.fov=w<480?51:44;camera.updateProjectionMatrix();renderer.setSize(w,h);buildDimensions();frameFocusedView();}
 init();settingsUI();syncCabinetDimensions();initAmazonCatalog();buttonControls();updateCabinetControls();build();setTime(0);resize();window.addEventListener('resize',resize);
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.06,(now-prev)/1000);prev=now;if(playing){setTime(time+dt*speed);if(time>=12)playing=false;}if(camTween){const u=Math.min(1,(now-camTween.start)/600);camera.position.lerpVectors(camTween.from,camTween.to,smooth(u));if(u>=1)camTween=null;}orbit.update();renderScene();}requestAnimationFrame(animate);
 </script></body></html>
