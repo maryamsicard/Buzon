@@ -523,43 +523,89 @@ function ironRibbon(points,width){
  });
  return new THREE.Shape([...edges[0],...edges[1].reverse()]);
 }
-function addDoorIronwork(group,x,z,width,panels){
+// Centre lines traced from the rectified reference. Panel coordinates run top to bottom.
+const ironPanelHalf=[
+ // Top curl and the longer S that flows into the large upper scroll.
+ [90,103,[88,81,93,57,81,34],[72,13,55,1,36,3],[14,5,0,23,2,43],
+  [3,58,17,69,34,65],[51,62,59,49,54,36],[50,23,38,18,29,26],
+  [18,34,24,50,35,49],[39,49,42,47,44,44]],
+ [45,111,[44,101,35,98,29,104],[20,113,25,127,38,131],
+  [52,138,68,131,77,120],[93,98,86,80,66,72],[47,63,25,65,12,82],
+  [-1,97,0,109,4,120],[9,137,27,145,46,140]],
+ [90,100,[93,131,73,148,54,158],[31,169,12,174,4,196],[1,204,1,210,2,217]],
+ // Upper scroll: the diagonal continues into the diamond on the divider.
+ [31,211,[38,204,47,207,49,216],[54,227,45,236,34,236],
+  [17,239,4,225,3,211],[1,190,17,173,39,169],[61,163,82,178,88,201],
+  [99,238,73,259,53,276],[43,285,34,291,26,298],[2,298]],
+ // Lower scroll: the other side of the diamond flows into the spiral.
+ [2,298,[26,298],[46,317,66,333,78,349],[98,373,93,399,74,416],
+  [57,430,32,430,16,416],[0,403,-2,380,12,368],[22,359,38,358,46,368],
+  [56,380,44,395,33,385]],
+ [2,392,[1,416,16,432,40,442],[67,453,88,464,90,488],
+  [94,508,77,520,57,522],[37,525,15,518,7,503],[0,489,6,469,21,462],
+  [36,454,54,459,60,472],[65,484,57,497,46,496],[35,496,30,488,38,481]],
+ [90,484,[91,512,94,539,82,557],[72,573,53,581,34,578],
+  [17,576,4,566,5,551],[5,538,17,524,29,523],[42,521,56,528,58,540],
+  [61,554,47,561,37,554],[29,550,29,541,36,537],[40,535,44,536,46,540]]
+];
+const ironPanelArches=[
+ [2,213,[7,252,47,276,90,276],[133,276,173,252,178,213]],
+ [2,386,[7,351,45,324,90,324],[135,324,173,351,178,386]]
+];
+// A bay in the horizontal border. Neighbouring bays alternate top and bottom.
+const ironBandHalf=[2,0,[1,12,1,25,13,32],[21,37,37,40,41,52],
+ [45,64,35,77,24,78],[14,79,4,73,4,64],[4,57,10,51,17,52],
+ [23,52,27,58,23,63]];
+const ironDoorTraces={
+ left:{width:450,height:710,panels:[[28,199],[269,439]],top:24,divider:605,bottom:689},
+ right:{width:450,height:710,panels:[[19,185],[249,421]],top:24,divider:605,bottom:689},
+ walk:{width:352,height:712,panels:[[88,253]],top:21,divider:610,bottom:695}
+};
+function addDoorIronwork(group,x,z,width,door){
+ const trace=ironDoorTraces[door];
  const ironwork=new THREE.Group();
- ironwork.name='Herrería de '+(panels.length===1?'puerta peatonal':'hoja de portón');
+ ironwork.name='Herrería de '+(door==='walk'?'puerta peatonal':'hoja de portón');
  ironwork.position.set(x,0,z);
  group.add(ironwork);
- const bar=(w,h,x,y)=>meshBox(ironwork,w,h,2,x,y,.1,facadeMat.iron,'Barra de herrería');
- for(const side of [-1,1])bar(3.5,205,side*(width/2-1.75),105.5);
- for(const y of [5,25,206])bar(width,3.5,0,y);
+ const sx=width/trace.width,sy=205/trace.height;
+ const bar=(w,h,x,y)=>meshBox(ironwork,w*sx,h*sy,2,(x-trace.width/2)*sx,208-y*sy,.1,facadeMat.iron,'Barra de herrería');
+ for(const x of [7,trace.width-7])bar(14,trace.height,x,trace.height/2);
+ for(const [y,h] of [[12,22],[trace.divider,14],[trace.bottom+8,17]])bar(trace.width,h,trace.width/2,y);
  const ribbons=[];
- function scrollPair(center,y,span,rise,direction,thickness,join=y-direction*rise*.7){
-  for(const side of [-1,1]){
-   const points=[new THREE.Vector2(center,join)];
-   for(let step=0;step<=36;step++){
-    const t=step/36;
-    const angle=PI+direction*(.55+2*PI*t);
-    const radius=1-.87*t;
-    points.push(new THREE.Vector2(
-     center+side*span*(.24+.25*radius*Math.cos(angle)),
-     y+rise*radius*Math.sin(angle)
-    ));
+ function traceRibbon([x,y,...segments],project,thickness){
+  let from=project(x,y);
+  const points=[from];
+  for(const segment of segments){
+   if(segment.length===2){
+    from=project(...segment);
+    points.push(from);
+   }else{
+    const [a,b,c,d,e,f]=segment;
+    const to=project(e,f);
+    const curve=new THREE.CubicBezierCurve(from,project(a,b),project(c,d),to);
+    points.push(...curve.getPoints(9).slice(1));
+    from=to;
    }
-   ribbons.push(ironRibbon(points,thickness));
   }
+  ribbons.push(ironRibbon(points,thickness));
  }
- for(const [offset,proportion] of panels){
-  const center=width*offset,span=width*proportion;
-  for(const side of [-1,1])bar(2.5,181,center+side*span/2,115.5);
-  for(const [y,rise,direction,join] of [[192,12,1],[166,14,-1],[137,19,1,119],[80,19,-1,97],[51,12,1],[33,8,-1]]){
-   scrollPair(center,y,span,rise,direction,1.25,join);
+ const position=(x,y)=>new THREE.Vector2((x-trace.width/2)*sx,208-y*sy);
+ for(const [left,right] of trace.panels){
+  for(const x of [left-5,right+5])bar(10,trace.divider-trace.top,x,(trace.divider+trace.top)/2);
+  const panel=(x,y)=>position(left+x*(right-left)/180,trace.top+y*(trace.divider-trace.top)/580);
+  for(const path of ironPanelHalf){
+   traceRibbon(path,panel,1.2);
+   traceRibbon(path,(x,y)=>panel(180-x,y),1.2);
   }
-  const diamond=[[-.48,108],[0,119],[.48,108],[0,97],[-.48,108]];
-  ribbons.push(ironRibbon(diamond.map(([dx,y])=>new THREE.Vector2(center+span*dx,y)),1.25));
+  for(const path of ironPanelArches)traceRibbon(path,panel,1.2);
  }
- const repeats=Math.round(width/33);
- for(let i=0;i<repeats;i++){
-  const span=(width-7)/repeats;
-  scrollPair((i+.5-repeats/2)*span,17,span,6,i%2?-1:1,1.05);
+ const count=door==='walk'?4:5;
+ const cell=(trace.width-28)/count;
+ for(let i=0;i<count;i++){
+  const band=(x,y)=>position(14+(i+x/84)*cell,
+   trace.divider+7+(i%2?80-y:y)*(trace.bottom-trace.divider-7)/80);
+  traceRibbon(ironBandHalf,band,1.05);
+  traceRibbon(ironBandHalf,(x,y)=>band(84-x,y),1.05);
  }
  const geometry=new THREE.ExtrudeGeometry(ribbons,{depth:1.2,bevelEnabled:false});
  const scrolls=new THREE.Mesh(geometry,facadeMat.iron);
@@ -598,11 +644,11 @@ function buildHouseFacade(left,right,wallHeight,front,openingTop){
  }
  for(const x of [-414.5,-279.5]){
   box('Hoja de portón',facadeMat.gate,134.4,205,4.5,x,105.5,-11);
-  addDoorIronwork(group,shift+x,front-8.5,134.4,[[-.26,.42],[.26,.42]]);
+  addDoorIronwork(group,shift+x,front-8.5,134.4,x===-414.5?'left':'right');
  }
  for(const x of [-352,-342])box('Placa central del portón',facadeMat.iron,9,58,2.4,x,108,-7);
  box('Puerta peatonal',facadeMat.gate,100,205,4.5,-138,105.5,-11);
- addDoorIronwork(group,shift-138,front-8.5,100,[[0,.51]]);
+ addDoorIronwork(group,shift-138,front-8.5,100,'walk');
  box('Ranura de la puerta',mat.frame,16,4.5,.8,-115,84,-8.5);
  const pull=new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.3,17,16),mat.handle);
  pull.name='Tirador de la puerta peatonal';
