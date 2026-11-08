@@ -116,8 +116,14 @@ button:hover{background:#dcebf0}
 </div>
 <p class="muted2">Elige una configuración para aplicar sus medidas y consultar sus resultados guardados.</p>
 <details class="catalog-trial">
-<summary>Tabla de referencia de medidas</summary>
-<p class="muted2">Entrada a 80 cm del piso y muro de 20 cm. Las medidas están en centímetros. El total incluye cajas que cayeron y dejaron cerrar la tapa en al menos una orientación.</p>
+<summary>Tabla de medidas por grupo</summary>
+<p class="muted2">Entrada a 80 cm del piso y muro de 20 cm. Medidas en cm. Se comprobó cada grupo con fricción simulada de 0.30, 0.35 y 0.40. Una caja cuenta si cae y deja cerrar la tapa en al menos una orientación.</p>
+<table><thead><tr><th scope="col">Grupo</th><th scope="col">Abertura</th><th scope="col">Fondo</th><th scope="col">Pestaña</th><th scope="col">Pasan</th></tr></thead><tbody id="catalogGroupReference"></tbody></table>
+<p class="muted2">Los grupos son acumulativos. «Hasta grandes» incluye pequeñas, medianas y grandes. Abertura: ancho × alto. Pestaña: ancho × largo.</p>
+</details>
+<details class="catalog-trial">
+<summary>Tabla de la comparación anterior</summary>
+<p class="muted2">Entrada a 80 cm del piso y muro de 20 cm. Medidas en cm. El total incluye las cajas que cayeron y dejaron cerrar la tapa en al menos una orientación.</p>
 <table><thead><tr><th scope="col">Abertura</th><th scope="col">Fondo</th><th scope="col">Pestaña</th><th scope="col">Caen</th></tr></thead><tbody id="catalogPresetReference"></tbody></table>
 </details>
 <div class="buttons"><button id="physicsCatalog">Probar las 56 cajas</button></div>
@@ -1378,8 +1384,12 @@ async function startPhysicsTrial(){
  }
 }
 
-// Recorded outcomes from the four catalog trials, keyed by box code.
+// Outcomes at the simulator's standard friction, keyed by box code.
 const catalogPresets=[
+ {"id":"grupos-pequenas","label":"Pequeñas","maxLength":40,"dimensions":{"openingW":45,"openingH":35,"boxD":50,"tongueW":45,"tongueL":35},"results":{"0A0":"CC","A1":"CC","A3":"CC","W01":"CC","A0":"CC","1A1":"CC","A4":"CC","BM2":"CC","Z1":"CC","1A3":"CC","1AE":"CC","1A5":"CC","1AC":"CC","1A9":"CC","1A7":"CC","1B2":"AC","Z4":"CC","B0":"CC","1B4":"CN","1B9":"CN","1BA":"CN","C1":"AN","C4":"CN","1BB":"CN","2A0":"AN","2A5":"AN","P2":"NN","2A6":"CN","P1":"AN","1BG":"NN","2BB":"NN","B05":"AN","D4":"NN","S5":"NN","2A7":"NN","B14":"NN","P5":"NN","2A8":"NN","F3":"NN","P4":"NN","P9":"NN","B11":"NN","P7":"NN","3A1":"NN","Q2":"NN","Q3":"NN","Q4":"NN","Q5":"NN","Q6":"NN","U0":"NN","U3":"NN","U5":"NN","J7":"NN","K89":"NN","J7A":"NN","CB4":"NN"}},
+ {"id":"grupos-medianas","label":"Hasta medianas","maxLength":60,"dimensions":{"openingW":65,"openingH":50,"boxD":75,"tongueW":65,"tongueL":50},"results":{"0A0":"CC","A1":"CC","A3":"CC","W01":"CC","A0":"CC","1A1":"CC","A4":"CC","BM2":"CC","Z1":"CC","1A3":"CC","1AE":"CC","1A5":"CC","1AC":"CC","1A9":"CC","1A7":"CC","1B2":"CC","Z4":"CC","B0":"CC","1B4":"CC","1B9":"CC","1BA":"CC","C1":"CC","C4":"CC","1BB":"CC","2A0":"CC","2A5":"CC","P2":"CC","2A6":"CC","P1":"CC","1BG":"CC","2BB":"CC","B05":"CA","D4":"CC","S5":"CC","2A7":"CC","B14":"CC","P5":"CN","2A8":"CN","F3":"CN","P4":"CN","P9":"CN","B11":"CN","P7":"CN","3A1":"AN","Q2":"CN","Q3":"NN","Q4":"NN","Q5":"NN","Q6":"NN","U0":"NN","U3":"NN","U5":"NN","J7":"NN","K89":"NN","J7A":"NN","CB4":"NN"}},
+ {"id":"grupos-grandes","label":"Hasta grandes","maxLength":90,"dimensions":{"openingW":87,"openingH":55,"boxD":85,"tongueW":87,"tongueL":48},"results":{"0A0":"CC","A1":"CC","A3":"CC","W01":"CC","A0":"CC","1A1":"CC","A4":"CC","BM2":"CC","Z1":"CC","1A3":"CC","1AE":"CC","1A5":"CC","1AC":"CC","1A9":"CC","1A7":"CC","1B2":"CC","Z4":"AC","B0":"CC","1B4":"CC","1B9":"CC","1BA":"CC","C1":"CC","C4":"CC","1BB":"CC","2A0":"CC","2A5":"CC","P2":"CC","2A6":"CC","P1":"CC","1BG":"AC","2BB":"CC","B05":"CC","D4":"CC","S5":"CC","2A7":"CC","B14":"CC","P5":"AC","2A8":"CC","F3":"CC","P4":"CC","P9":"CC","B11":"CA","P7":"AC","3A1":"AC","Q2":"AC","Q3":"AN","Q4":"CN","Q5":"AN","Q6":"AN","U0":"CN","U3":"CN","U5":"CN","J7":"CN","K89":"CN","J7A":"NN","CB4":"NN"}},
+ {"id":"grupos-todas","label":"Todo el catálogo","maxLength":999,"dimensions":{"openingW":87,"openingH":55,"boxD":105,"tongueW":87,"tongueL":48},"results":{"0A0":"CC","A1":"CC","A3":"CC","W01":"CC","A0":"CC","1A1":"CC","A4":"CC","BM2":"CC","Z1":"CC","1A3":"CC","1AE":"CC","1A5":"CC","1AC":"CC","1A9":"CC","1A7":"CC","1B2":"CC","Z4":"AC","B0":"CC","1B4":"CC","1B9":"CC","1BA":"CC","C1":"CC","C4":"CC","1BB":"CC","2A0":"AC","2A5":"CC","P2":"CC","2A6":"CC","P1":"CC","1BG":"AC","2BB":"CC","B05":"CC","D4":"CC","S5":"CC","2A7":"CC","B14":"CC","P5":"CC","2A8":"CC","F3":"CC","P4":"CC","P9":"CC","B11":"CA","P7":"AC","3A1":"AC","Q2":"AC","Q3":"CN","Q4":"CN","Q5":"CN","Q6":"CN","U0":"CN","U3":"CN","U5":"CN","J7":"CN","K89":"CN","J7A":"CN","CB4":"CN"}},
  {"id":"actual","dimensions":{"openingW":60,"openingH":50,"boxD":50,"tongueW":60,"tongueL":35},"results":{"0A0":"CC","A1":"CC","A3":"CC","W01":"CC","A0":"CC","1A1":"CC","A4":"CC","BM2":"CC","Z1":"CC","1A3":"CC","1AE":"CC","1A5":"CC","1AC":"CC","1A9":"CC","1A7":"CC","1B2":"CC","Z4":"CC","B0":"CC","1B4":"CC","1B9":"CC","1BA":"CC","C1":"AC","C4":"CC","1BB":"CC","2A0":"AC","2A5":"AC","P2":"AA","2A6":"CC","P1":"AC","1BG":"AA","2BB":"AA","B05":"AA","D4":"CC","S5":"CC","2A7":"NN","B14":"NN","P5":"NN","2A8":"NN","F3":"NN","P4":"NN","P9":"NN","B11":"NN","P7":"NN","3A1":"NN","Q2":"NN","Q3":"NN","Q4":"NN","Q5":"NN","Q6":"NN","U0":"NN","U3":"NN","U5":"NN","J7":"NN","K89":"NN","J7A":"NN","CB4":"NN"}},
  {"id":"mas-fondo","dimensions":{"openingW":60,"openingH":50,"boxD":75,"tongueW":60,"tongueL":35},"results":{"0A0":"CC","A1":"CC","A3":"CC","W01":"CC","A0":"CC","1A1":"CC","A4":"CC","BM2":"CC","Z1":"CC","1A3":"CC","1AE":"CC","1A5":"CC","1AC":"CC","1A9":"CC","1A7":"CC","1B2":"CC","Z4":"CC","B0":"CC","1B4":"CC","1B9":"CC","1BA":"CC","C1":"AC","C4":"CC","1BB":"CC","2A0":"AC","2A5":"AC","P2":"CC","2A6":"CC","P1":"AC","1BG":"AA","2BB":"CC","B05":"AA","D4":"CC","S5":"CC","2A7":"AN","B14":"AN","P5":"CN","2A8":"AN","F3":"AN","P4":"AN","P9":"AN","B11":"AN","P7":"AN","3A1":"AN","Q2":"CN","Q3":"CN","Q4":"CN","Q5":"NN","Q6":"NN","U0":"CN","U3":"CN","U5":"AN","J7":"CN","K89":"NN","J7A":"NN","CB4":"NN"}},
  {"id":"amplia","dimensions":{"openingW":75,"openingH":55,"boxD":80,"tongueW":75,"tongueL":42},"results":{"0A0":"CC","A1":"CC","A3":"CC","W01":"CC","A0":"CC","1A1":"CC","A4":"CC","BM2":"CC","Z1":"CC","1A3":"CC","1AE":"CC","1A5":"CC","1AC":"CC","1A9":"CC","1A7":"CC","1B2":"CC","Z4":"CC","B0":"CC","1B4":"CC","1B9":"CC","1BA":"CC","C1":"CC","C4":"CC","1BB":"CC","2A0":"AC","2A5":"AC","P2":"CC","2A6":"CC","P1":"CC","1BG":"AA","2BB":"CC","B05":"AA","D4":"CC","S5":"CC","2A7":"CC","B14":"CC","P5":"CC","2A8":"AC","F3":"AC","P4":"CC","P9":"AA","B11":"CA","P7":"AA","3A1":"AN","Q2":"CN","Q3":"CN","Q4":"CN","Q5":"NN","Q6":"AN","U0":"CN","U3":"CN","U5":"CN","J7":"CN","K89":"NN","J7A":"NN","CB4":"NN"}},
@@ -1394,16 +1404,31 @@ function catalogCategory(attempts){
  const results=attempts.map(trialResult);
  return ['Cae','Inconclusa','Se atora','Cae fuera','No entra'].find(label=>results.includes(label));
 }
+function presetCoverage(preset){
+ const boxes=amazonBoxes.filter(([,length])=>length<=(preset.maxLength??Infinity));
+ return `${boxes.filter(([code])=>preset.results[code].includes('C')).length}/${boxes.length}`;
+}
 function initCatalogPresets(){
  const selector=$('catalogPreset');
- const reference=$('catalogPresetReference');
+ const groupOptions=document.createElement('optgroup'),previousOptions=document.createElement('optgroup');
+ groupOptions.label='Configuraciones por grupo';
+ previousOptions.label='Comparación anterior';
+ selector.append(groupOptions,previousOptions);
  for(const preset of catalogPresets){
   const {openingW,openingH,boxD,tongueW,tongueL}=preset.dimensions;
-  const count=Object.values(preset.results).filter(result=>result.includes('C')).length;
   const opening=`${openingW} × ${openingH}`;
-  selector.add(new Option(`${opening} cm · fondo ${boxD} cm`,preset.id));
+  const group=Boolean(preset.label);
+  const label=`${opening} cm · fondo ${boxD} cm`;
+  (group?groupOptions:previousOptions).append(new Option(group?`${preset.label} · ${label}`:label,preset.id));
+  const reference=$(group?'catalogGroupReference':'catalogPresetReference');
   const tr=reference.insertRow();
-  for(const value of [opening,boxD,`${tongueW} × ${tongueL}`,`${count}/${amazonBoxes.length}`]){
+  if(group){
+   const heading=document.createElement('th');
+   heading.scope='row';
+   heading.textContent=preset.label;
+   tr.append(heading);
+  }
+  for(const value of [opening,boxD,`${tongueW} × ${tongueL}`,presetCoverage(preset)]){
    tr.insertCell().textContent=value;
   }
  }
@@ -1432,7 +1457,9 @@ function applyCatalogPreset(){
  $('physicsCatalogAccepted').checked=true;
  renderCatalogRun(run,null);
  catalogRun=run;
- $('physicsCatalogStatus').textContent='Resultados guardados. Se probó cada caja por separado, con el depósito vacío.';
+ $('physicsCatalogStatus').textContent=preset.label
+  ? `${preset.label}: ${presetCoverage(preset)} del grupo objetivo. La lista muestra resultados del catálogo completo a fricción 0.35, con el depósito vacío.`
+  : 'Resultados guardados. Se probó cada caja por separado, con el depósito vacío.';
 }
 function markCatalogConfigurationChanged(){
  if(!catalogRun || catalogRun.configKey===JSON.stringify(p))return;
