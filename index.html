@@ -73,7 +73,7 @@ button:hover{background:#dcebf0}
 @media(max-width:640px){.hardware{padding:24px 16px}.hardware-grid{grid-template-columns:1fr}.hardware header{flex-wrap:wrap}}
 @media print{.hardware{display:none}}
 </style></head><body>
-<header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V11 · catálogo Amazon y ruedas industriales · unidades en cm · unidades en cm</small></div><div class="header-links"><span class="pill">Modelo conceptual editable</span><a href="#herrajes">Herrajes</a><a href="#exportar">Planos PDF</a></div></header>
+<header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V11 · catálogo Amazon y ruedas industriales · unidades en cm · unidades en cm</small></div><div class="header-links"><span class="pill">Prueba experimental de caída</span><a href="#herrajes">Herrajes</a><a href="#exportar">Planos PDF</a></div></header>
 <main id="simulador"><aside class="sidebar">
 <section class="inspection" aria-labelledby="inspectionTitle">
 <h2 id="inspectionTitle">Vistas de inspección</h2>
@@ -87,7 +87,11 @@ button:hover{background:#dcebf0}
 <label class="check"><input id="guide" type="checkbox" checked> Mostrar eje y recorrido ilustrativo</label>
 </section>
 <div class="row"><strong>Simulación de entrega</strong><span class="pill" id="state">Cerrado</span></div>
-<h2>Animación y movimiento</h2>
+<h2>Prueba con gravedad y colisiones</h2>
+<div class="buttons"><button class="primary" id="physics">Probar caída con física</button><button id="physicsPause" disabled>Pausar prueba</button></div>
+<p class="muted2">Usa las medidas actuales de la caja. La prueba la introduce centrada, la suelta y cierra la tapa a velocidad fija. La fricción usada es 0.35.</p>
+<div class="card" id="physicsStatus" role="status">Lista para probar una caja con el depósito acoplado.</div>
+<h2>Animación ilustrativa</h2>
 <div class="buttons"><button class="primary" id="play">▶ Reproducir entrega</button><button id="pause">Ⅱ Pausar</button><button id="reset">↺ Reiniciar</button></div>
 <div class="buttons" style="margin-top:8px"><button id="open">Abrir tapa</button><button id="place">Colocar caja</button><button id="close">Cerrar y depositar</button><button id="access" aria-expanded="false" aria-controls="accessForm">Abrir puerta interior</button></div>
 <form id="accessForm" class="card access-form" hidden>
@@ -940,6 +944,7 @@ function build(){
  buildDimensions();
  positionCabinet();
  setAngle(theta);updateParcel();stored.forEach(renderStoredPackage);updateChecks();updateStoredStatus();
+ if(physicsTrial)drawPhysicsTrial();
 }
 function setAngle(a){theta=Math.max(0,Math.min(90,a));if(pivot)pivot.rotation.x=theta*PI/180;$('angle').value=theta;$('angleText').textContent=Math.round(theta)+'°';}
 function packageOnTongue(){const location=Math.min(p.tongueL*.55,Math.max(pack.d/2+3,8));const local=new THREE.Vector3(0,-location,-pack.h/2-.9);local.applyAxisAngle(new THREE.Vector3(1,0,0),theta*PI/180);return local.add(new THREE.Vector3(0,hingeY,hingeZ));}
@@ -1068,6 +1073,7 @@ function commitDelivery(){
  updateStoredStatus();
 }
 function prepareNext(keepAngle=false){
+ stopPhysicsTrial();
  playing=false;
  deliverySlot=null;deliveryCommitted=false;deliveryBlocked=false;deliveryReason='';
  const angle=theta;
@@ -1095,6 +1101,210 @@ function setTime(t){time=Math.max(0,Math.min(12,t));let a=0,which='none',mix=0,d
  if(deliveryCommitted && parcel)parcel.visible=false;
  $('timeline').value=time;$('clock').textContent=time.toFixed(1)+' / 12.0 s';$('phase').textContent=desc;
 }
+let physicsTrial=null,physicsLoading=false;
+let physicsEngine;
+const physicalStep=1/240;
+const physicalFriction=.35;
+
+function physicalTrace(R){
+ const world=new R.World({x:0,y:-9.81,z:0});
+ world.timestep=physicalStep;
+ world.maxCcdSubsteps=4;
+ world.numSolverIterations=20;
+ world.integrationParameters.normalizedAllowedLinearError=.00015;
+ const fixed=[];
+ const moving=[];
+ const frames=[];
+ const identity=new THREE.Quaternion();
+ const rotation=angle=>new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),angle);
+ const vec=(x,y,z)=>new THREE.Vector3(x,y,z);
+ const dimensions=[pack.w,pack.h,pack.d];
+ const shape=new R.Cuboid(...dimensions.map(n=>n/200));
+ const entryShape=new R.Cuboid((pack.w+.2)/200,pack.h/200,pack.d/200);
+ const friction=desc=>desc.setFriction(physicalFriction).setRestitution(.02);
+ const record=(position,quaternion,angle,label)=>frames.push({
+  p:vec(position.x,position.y,position.z).multiplyScalar(100),q:new THREE.Quaternion().copy(quaternion),angle,label
+ });
+ const finish=(outcome,detail,ok=false)=>({frames,outcome,detail,ok});
+ const solid=(name,size,position,quaternion=identity,body=null,cylinder=false)=>{
+  const desc=cylinder?R.ColliderDesc.cylinder(size[1]/200,size[0]/200):R.ColliderDesc.cuboid(...size.map(n=>n/200));
+  desc.setTranslation(position.x/100,position.y/100,position.z/100).setRotation(quaternion);
+  const collider=world.createCollider(friction(desc).setContactSkin(.0025),body);
+  (body?moving:fixed).push({name,collider});
+ };
+ const meshSolid=(mesh,body=null)=>{
+  const {geometry}=mesh;
+  if(!geometry || !['BoxGeometry','CylinderGeometry'].includes(geometry.type))return;
+  const isCylinder=geometry.type==='CylinderGeometry';
+  const {width,height,depth,radiusTop}=geometry.parameters;
+  const name=mesh.name||(body?'Bisagra de la tapa':'Eje de la pestaña');
+  if(body)solid(name,isCylinder?[2*radiusTop,height]:[width,height,depth],mesh.position,mesh.quaternion,body,isCylinder);
+  else solid(name,isCylinder?[2*radiusTop,height]:[width,height,depth],mesh.getWorldPosition(vec()),mesh.getWorldQuaternion(new THREE.Quaternion()),null,isCylinder);
+ };
+ try{
+  root.updateMatrixWorld(true);
+  const half=p.openingW/2,low=p.entryY,high=low+p.openingH;
+  const front=p.wallD/2,boxFront=-front-dockingGap,boxBack=boxFront-p.boxD;
+  const floor=p.boxFloor+cabinetWallThickness;
+  // Four solids model the parts of the wall around the opening.
+  solid('Muro bajo la entrada',[600,low,p.wallD],vec(0,low/2,0));
+  solid('Muro sobre la entrada',[600,200,p.wallD],vec(0,high+100,0));
+  for(const side of [-1,1])solid('Costado del vano',[250,high-low,p.wallD],vec(side*(half+125),(low+high)/2,0));
+  solid('Piso exterior',[1000,20,1000],vec(0,-10,0));
+  for(const mesh of pivot.parent.children)if(mesh!==pivot && mesh!==guideGroup)meshSolid(mesh);
+  for(const mesh of cabinet.children)if(mesh.isMesh)meshSolid(mesh);
+  meshSolid(access.getObjectByName('Puerta interior opaca'));
+  for(const box of stored)solid('Caja depositada',[box.w,box.h,box.d],vec(box.x,box.y,box.z));
+
+  const opened=rotation(PI/2);
+  const lid=world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased()
+   .setTranslation(0,hingeY/100,hingeZ/100).setRotation(opened));
+  for(const mesh of pivot.children)meshSolid(mesh,lid);
+  world.step();
+  const colliders=[...fixed,...moving];
+  const findContact=(at,orientation,probe,tolerance)=>{
+   let deepest=null;
+   for(const {name,collider} of colliders){
+    const hit=collider.contactShape(probe,at,orientation,0);
+    if(hit && -hit.distance>(deepest?.depth??tolerance))deepest={name,depth:-hit.distance};
+   }
+   return deepest;
+  };
+  const start=vec(0,(hingeY+Math.max(1.9,p.tongueT/2+.3)+pack.h/2)/100,(front+pack.d/2+25)/100);
+  const openSteps=Math.round(.6/physicalStep);
+  for(let i=0;i<openSteps;i++)record(start,identity,90*smooth(i/openSteps),'Abriendo la tapa');
+  const targetZ=(hingeZ-Math.min(p.tongueL*.60,pack.d/2+2))/100;
+  const insertSteps=Math.ceil((start.z-targetZ)/(.6*physicalStep));
+  let position=start.clone();
+  for(let i=1;i<=insertSteps;i++){
+   const next=vec(start.x,start.y,THREE.MathUtils.lerp(start.z,targetZ,i/insertSteps));
+   const obstruction=findContact(next,identity,entryShape,.00015);
+   if(obstruction)return finish('No entra en este intento','La caja toca '+obstruction.name.toLowerCase()+' durante la entrada recta.');
+   position=next;
+   record(position,identity,90,'Introduciendo la caja centrada');
+  }
+
+  const body=world.createRigidBody(R.RigidBodyDesc.dynamic().setTranslation(position.x,position.y,position.z)
+   .setCcdEnabled(true).setSoftCcdPrediction(.02).setCanSleep(false).setAngularDamping(.15));
+  world.createCollider(friction(R.ColliderDesc.cuboid(...dimensions.map(n=>n/200))),body);
+  const quiet=v=>Math.hypot(v.x,v.y,v.z);
+  const halfSize=dimensions.map(n=>n/2);
+  let still=0,unresolved=0;
+  for(let i=0;i<Math.round(6/physicalStep);i++){
+   const t=i*physicalStep;
+   const angle=90*(1-smooth((t-.35)/1.45));
+   lid.setNextKinematicRotation(rotation(angle*PI/180));
+   world.step();
+   const at=body.translation(),orientation=body.rotation();
+   // A driven lid must stop if the solver cannot resolve the contact without visible overlap.
+   const obstruction=findContact(at,orientation,shape,.0025);
+   if(obstruction){
+    if(++unresolved>=8 || obstruction.depth>.016){
+     return finish('Atasco en este intento','La caja quedó presionada contra '+obstruction.name.toLowerCase()+' durante el cierre.');
+    }
+    // Keep the last valid pose while the solver resolves a transient impact.
+    frames.push(frames.at(-1));
+    still=0;
+    continue;
+   }
+   unresolved=0;
+   record(at,orientation,angle,t<.35?'Soltando la caja sobre la pestaña':'Gravedad y contactos');
+   if(angle===0 && quiet(body.linvel())<.025 && quiet(body.angvel())<.10)still++;
+   else still=0;
+   if(still<Math.round(.5/physicalStep))continue;
+   const bounds=new THREE.Box3();
+   const q=new THREE.Quaternion().copy(orientation);
+   for(const x of [-halfSize[0],halfSize[0]])for(const y of [-halfSize[1],halfSize[1]])for(const z of [-halfSize[2],halfSize[2]]){
+    bounds.expandByPoint(vec(x,y,z).applyQuaternion(q).add(vec(at.x,at.y,at.z).multiplyScalar(100)));
+   }
+   if(bounds.min.x>=-half-.3 && bounds.max.x<=half+.3 && bounds.min.z>=boxBack-.3 && bounds.max.z<=boxFront+.3
+      && bounds.min.y>=floor-.3 && bounds.max.y<=p.boxTop+.3){
+    return finish('Cayó dentro del depósito','La caja quedó en reposo dentro del gabinete y la tapa terminó de cerrar.',true);
+   }
+   if(bounds.min.y<floor-1)return finish('Cayó fuera del depósito','La caja terminó apoyada fuera del gabinete.');
+   return finish('Quedó detenida','La caja quedó en reposo sin entrar completamente en el depósito.');
+  }
+  return finish('Resultado inconcluso','La caja no se estabilizó durante el tiempo de prueba.');
+ }finally{
+  world.free();
+ }
+}
+
+function stopPhysicsTrial(){
+ if(!physicsTrial)return;
+ physicsTrial=null;
+ parcel.visible=false;
+ deliveryGuide.visible=cabinetOffset===0;
+ $('timeline').disabled=cabinetOffset>0;
+ $('physicsPause').disabled=true;
+ $('physicsPause').textContent='Pausar prueba';
+ $('clock').textContent=time.toFixed(1)+' / 12.0 s';
+ $('physicsStatus').textContent='Prueba reiniciada. Usa las medidas actuales de la caja para repetirla.';
+}
+function drawPhysicsTrial(){
+ const frame=physicsTrial.frames[Math.floor(physicsTrial.cursor)];
+ if(!frame)return;
+ setAngle(frame.angle);
+ deliveryGuide.visible=false;
+ parcel.visible=true;
+ parcel.position.copy(frame.p);
+ parcel.quaternion.copy(frame.q);
+}
+function advancePhysicsTrial(dt){
+ if(!physicsTrial || physicsTrial.done || physicsTrial.paused)return;
+ const trial=physicsTrial;
+ trial.cursor=Math.min(trial.frames.length-1,trial.cursor+dt/physicalStep);
+ drawPhysicsTrial();
+ const frame=trial.frames[Math.floor(trial.cursor)];
+ $('clock').textContent=(trial.cursor*physicalStep).toFixed(1)+' s · prueba';
+ if(trial.cursor<trial.frames.length-1){
+  if(trial.label!==frame.label){
+   trial.label=frame.label;
+   $('phase').textContent=frame.label;
+   $('physicsStatus').textContent=frame.label+'…';
+  }
+  return;
+ }
+ trial.done=true;
+ $('physicsPause').disabled=true;
+ $('phase').textContent=trial.outcome;
+ $('state').textContent=trial.outcome;
+ $('physicsStatus').textContent=trial.outcome+'. '+trial.detail;
+ $('physicsStatus').style.borderLeftColor=trial.ok?'#269b89':'#c98731';
+}
+async function startPhysicsTrial(){
+ if(physicsLoading)return;
+ if(cabinetOffset>0){$('physicsStatus').textContent='Acerca el depósito al muro antes de probar la caída.';return;}
+ physicsLoading=true;
+ $('physics').disabled=true;
+ $('physicsStatus').textContent='Preparando la prueba de caída…';
+ try{
+  if(!physicsEngine){
+   const {default:engine}=await import('https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.17.3/rapier.es.js');
+   await engine.init();
+   physicsEngine=engine;
+  }
+  if(cabinetOffset>0){$('physicsStatus').textContent='Acerca el depósito al muro antes de probar la caída.';return;}
+  stopPhysicsTrial();
+  prepareNext();
+  setAccessOpen(false);
+  selectView('cut');
+  const result=physicalTrace(physicsEngine);
+  physicsTrial={...result,cursor:0,done:false,paused:false};
+  $('timeline').disabled=true;
+  $('physicsPause').disabled=false;
+  $('state').textContent='Prueba de caída';
+  $('physicsStatus').style.borderLeftColor='#269b89';
+  advancePhysicsTrial(0);
+ }catch(error){
+  console.error(error);
+  $('physicsStatus').textContent='La prueba de caída no se pudo ejecutar. Vuelve a intentarlo.';
+ }finally{
+  physicsLoading=false;
+  $('physics').disabled=false;
+ }
+}
+
 const views={outer:{position:[245,190,295],label:'Vista exterior',desc:'La tapa queda remetida en la cara interior del muro. El canto sirve de apoyo al abrir.'},inside:{position:[210,170,-320],label:'Vista interior de la casa',desc:'Gabinete negro opaco. La puerta permite retirar paquetes; cerrada oculta todo el contenido.'},cut:{label:'Corte lateral',desc:'El marco y su mecanismo quedan en el muro al retirar el depósito sobre ruedas.'},front:{label:'Vista de fachada',desc:'Usa Mostrar fachada para ver la entrada de la casa junto al buzón.'},latch:{label:'Detalle del cierre oculto',desc:'Corte del cierre derecho. Libera o fija el depósito para ver cómo la leva engancha el perno.'},mechanism:{position:[260,175,140],label:'Vista del mecanismo',desc:'Activa el corte para inspeccionar el brazo exterior y la pestaña interior como una sola pieza.'}};
 function selectView(key){
  const wasLateral=currentView==='cut';
@@ -1125,7 +1335,18 @@ function selectView(key){
   camTween={from:camera.position.clone(),to:new THREE.Vector3(x,y,z+targetZ),start:performance.now()};
  }
 }
-function buttonControls(){document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>selectView(b.dataset.view==='latch' && currentView==='latch'?'cut':b.dataset.view));
+function buttonControls(){
+ $('physics').onclick=startPhysicsTrial;
+ $('physicsPause').onclick=()=>{
+  if(!physicsTrial || physicsTrial.done)return;
+  physicsTrial.paused=!physicsTrial.paused;
+  $('physicsPause').textContent=physicsTrial.paused?'Continuar prueba':'Pausar prueba';
+ };
+ const legacyControls='#open,#place,#close,#play,#reset,#nextDelivery,#clearPackages,#access,#dock,#rollBack';
+ document.addEventListener('click',event=>{if(event.target.closest(legacyControls))stopPhysicsTrial();},true);
+ document.addEventListener('input',event=>{if(event.target.matches('#angle,#timeline,#cabinetOffset,#packageFields input'))stopPhysicsTrial();},true);
+ document.addEventListener('change',event=>{if(event.target.matches('#amazonBox'))stopPhysicsTrial();},true);
+ document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>selectView(b.dataset.view==='latch' && currentView==='latch'?'cut':b.dataset.view));
  $('latchToggle').onclick=()=>{
   if(cabinetOffset>0)return;
   cabinetLocked=!cabinetLocked;
@@ -1427,5 +1648,5 @@ function downloadPlanImage(measures,views){
 function download(text,name,type){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
 function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;viewportHeight=h;camera.aspect=w/h;camera.fov=w<480?51:44;camera.updateProjectionMatrix();renderer.setSize(w,h);buildDimensions();frameFocusedView();}
 init();settingsUI();syncCabinetDimensions();initAmazonCatalog();buttonControls();updateCabinetControls();build();setTime(0);resize();window.addEventListener('resize',resize);
-function animate(now){requestAnimationFrame(animate);const dt=Math.min(.06,(now-prev)/1000);prev=now;if(playing){setTime(time+dt*speed);if(time>=12)playing=false;}if(camTween){const u=Math.min(1,(now-camTween.start)/600);camera.position.lerpVectors(camTween.from,camTween.to,smooth(u));if(u>=1)camTween=null;}orbit.update();renderScene();}requestAnimationFrame(animate);
+function animate(now){requestAnimationFrame(animate);const dt=Math.min(.06,(now-prev)/1000);prev=now;advancePhysicsTrial(dt);if(playing){setTime(time+dt*speed);if(time>=12)playing=false;}if(camTween){const u=Math.min(1,(now-camTween.start)/600);camera.position.lerpVectors(camTween.from,camTween.to,smooth(u));if(u>=1)camTween=null;}orbit.update();renderScene();}requestAnimationFrame(animate);
 </script></body></html>
