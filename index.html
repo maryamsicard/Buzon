@@ -110,6 +110,16 @@ button:hover{background:#dcebf0}
 <p class="muted2">Usa las medidas actuales de la caja. La prueba la introduce centrada, la suelta y cierra la tapa a velocidad fija. La fricción usada es 0.35.</p>
 <div class="card" id="physicsStatus" role="status">Lista para probar una caja con el depósito acoplado.</div>
 <h2>Prueba del catálogo Amazon</h2>
+<div class="delivery-mode">
+<label for="catalogPreset">Medidas probadas</label>
+<select id="catalogPreset"><option value="">Personalizadas</option></select>
+</div>
+<p class="muted2">Elige una configuración para aplicar sus medidas y consultar sus resultados guardados.</p>
+<details class="catalog-trial">
+<summary>Tabla de referencia de medidas</summary>
+<p class="muted2">Entrada a 80 cm del piso y muro de 20 cm. Las medidas están en centímetros. El total incluye cajas que cayeron y dejaron cerrar la tapa en al menos una orientación.</p>
+<table><thead><tr><th scope="col">Abertura</th><th scope="col">Fondo</th><th scope="col">Pestaña</th><th scope="col">Caen</th></tr></thead><tbody id="catalogPresetReference"></tbody></table>
+</details>
 <div class="buttons"><button id="physicsCatalog">Probar las 56 cajas</button></div>
 <p class="muted2">Cada caja se prueba sola, de frente y girada 90° sobre su base. La tabla muestra cuáles caen por completo y dejan cerrar la tapa.</p>
 <p id="physicsCatalogStatus" class="muted2" role="status"></p>
@@ -117,6 +127,7 @@ button:hover{background:#dcebf0}
 <summary id="physicsCatalogSummary">Resultados</summary>
 <p id="physicsCatalogConfig" class="muted2"></p>
 <p id="physicsCatalogCompare" class="muted2" hidden></p>
+<label class="check"><input type="checkbox" id="physicsCatalogAccepted"> Mostrar solo las cajas que caen</label>
 <div class="catalog-trial-scroll" role="region" aria-label="Resultados de caída por caja" tabindex="0">
 <table><thead><tr><th scope="col">Caja · cm</th><th scope="col">De frente</th><th scope="col">Girada</th></tr></thead><tbody id="physicsCatalogRows"></tbody></table>
 </div>
@@ -344,6 +355,7 @@ function settingsUI(){
      p[key]=Number.isFinite(val)&&n.value.trim()!==''?Math.max(min,Math.min(max,val)):defaults[key];
      n.value=p[key];
      refreshGeometry();
+     markCatalogConfigurationChanged();
     });
    }
    row.append(l,n);body.append(row);
@@ -1366,9 +1378,70 @@ async function startPhysicsTrial(){
  }
 }
 
+// Recorded outcomes from the four catalog trials, keyed by box code.
+const catalogPresets=[
+ {"id":"actual","dimensions":{"openingW":60,"openingH":50,"boxD":50,"tongueW":60,"tongueL":35},"results":{"0A0":"CC","A1":"CC","A3":"CC","W01":"CC","A0":"CC","1A1":"CC","A4":"CC","BM2":"CC","Z1":"CC","1A3":"CC","1AE":"CC","1A5":"CC","1AC":"CC","1A9":"CC","1A7":"CC","1B2":"CC","Z4":"CC","B0":"CC","1B4":"CC","1B9":"CC","1BA":"CC","C1":"AC","C4":"CC","1BB":"CC","2A0":"AC","2A5":"AC","P2":"AA","2A6":"CC","P1":"AC","1BG":"AA","2BB":"AA","B05":"AA","D4":"CC","S5":"CC","2A7":"NN","B14":"NN","P5":"NN","2A8":"NN","F3":"NN","P4":"NN","P9":"NN","B11":"NN","P7":"NN","3A1":"NN","Q2":"NN","Q3":"NN","Q4":"NN","Q5":"NN","Q6":"NN","U0":"NN","U3":"NN","U5":"NN","J7":"NN","K89":"NN","J7A":"NN","CB4":"NN"}},
+ {"id":"mas-fondo","dimensions":{"openingW":60,"openingH":50,"boxD":75,"tongueW":60,"tongueL":35},"results":{"0A0":"CC","A1":"CC","A3":"CC","W01":"CC","A0":"CC","1A1":"CC","A4":"CC","BM2":"CC","Z1":"CC","1A3":"CC","1AE":"CC","1A5":"CC","1AC":"CC","1A9":"CC","1A7":"CC","1B2":"CC","Z4":"CC","B0":"CC","1B4":"CC","1B9":"CC","1BA":"CC","C1":"AC","C4":"CC","1BB":"CC","2A0":"AC","2A5":"AC","P2":"CC","2A6":"CC","P1":"AC","1BG":"AA","2BB":"CC","B05":"AA","D4":"CC","S5":"CC","2A7":"AN","B14":"AN","P5":"CN","2A8":"AN","F3":"AN","P4":"AN","P9":"AN","B11":"AN","P7":"AN","3A1":"AN","Q2":"CN","Q3":"CN","Q4":"CN","Q5":"NN","Q6":"NN","U0":"CN","U3":"CN","U5":"AN","J7":"CN","K89":"NN","J7A":"NN","CB4":"NN"}},
+ {"id":"amplia","dimensions":{"openingW":75,"openingH":55,"boxD":80,"tongueW":75,"tongueL":42},"results":{"0A0":"CC","A1":"CC","A3":"CC","W01":"CC","A0":"CC","1A1":"CC","A4":"CC","BM2":"CC","Z1":"CC","1A3":"CC","1AE":"CC","1A5":"CC","1AC":"CC","1A9":"CC","1A7":"CC","1B2":"CC","Z4":"CC","B0":"CC","1B4":"CC","1B9":"CC","1BA":"CC","C1":"CC","C4":"CC","1BB":"CC","2A0":"AC","2A5":"AC","P2":"CC","2A6":"CC","P1":"CC","1BG":"AA","2BB":"CC","B05":"AA","D4":"CC","S5":"CC","2A7":"CC","B14":"CC","P5":"CC","2A8":"AC","F3":"AC","P4":"CC","P9":"AA","B11":"CA","P7":"AA","3A1":"AN","Q2":"CN","Q3":"CN","Q4":"CN","Q5":"NN","Q6":"AN","U0":"CN","U3":"CN","U5":"CN","J7":"CN","K89":"NN","J7A":"NN","CB4":"NN"}},
+ {"id":"catalogo","dimensions":{"openingW":90,"openingH":65,"boxD":105,"tongueW":90,"tongueL":53},"results":{"0A0":"CC","A1":"CC","A3":"CC","W01":"CC","A0":"CC","1A1":"CC","A4":"CC","BM2":"CC","Z1":"CC","1A3":"CC","1AE":"CC","1A5":"CC","1AC":"CC","1A9":"CC","1A7":"CC","1B2":"CC","Z4":"CC","B0":"CC","1B4":"CC","1B9":"CC","1BA":"CC","C1":"CC","C4":"CC","1BB":"CC","2A0":"CC","2A5":"CC","P2":"CC","2A6":"CC","P1":"CC","1BG":"CC","2BB":"CC","B05":"CC","D4":"CC","S5":"CC","2A7":"CC","B14":"CC","P5":"CC","2A8":"CC","F3":"CC","P4":"CC","P9":"CC","B11":"CA","P7":"CC","3A1":"AC","Q2":"AC","Q3":"CN","Q4":"CN","Q5":"CN","Q6":"CN","U0":"CN","U3":"CN","U5":"CN","J7":"CN","K89":"CN","J7A":"CN","CB4":"CN"}}
+];
+const presetOutcome={C:'Cae',N:'No entra',A:'Se atora',F:'Cae fuera',I:'Inconclusa'};
 let catalogRun=null;
+function catalogSizes(length,width,height){
+ return [{w:width,h:height,d:length},{w:length,h:height,d:width}];
+}
+function catalogCategory(attempts){
+ const results=attempts.map(trialResult);
+ return ['Cae','Inconclusa','Se atora','Cae fuera','No entra'].find(label=>results.includes(label));
+}
+function initCatalogPresets(){
+ const selector=$('catalogPreset');
+ const reference=$('catalogPresetReference');
+ for(const preset of catalogPresets){
+  const {openingW,openingH,boxD,tongueW,tongueL}=preset.dimensions;
+  const count=Object.values(preset.results).filter(result=>result.includes('C')).length;
+  const opening=`${openingW} × ${openingH}`;
+  selector.add(new Option(`${opening} cm · fondo ${boxD} cm`,preset.id));
+  const tr=reference.insertRow();
+  for(const value of [opening,boxD,`${tongueW} × ${tongueL}`,`${count}/${amazonBoxes.length}`]){
+   tr.insertCell().textContent=value;
+  }
+ }
+ selector.onchange=applyCatalogPreset;
+ $('physicsCatalogAccepted').onchange=filterCatalogRows;
+}
+function filterCatalogRows(){
+ const accepted=$('physicsCatalogAccepted').checked;
+ for(const row of $('physicsCatalogRows').rows)row.hidden=accepted && row.dataset.accepted!=='true';
+}
+function applyCatalogPreset(){
+ const preset=catalogPresets.find(item=>item.id===$('catalogPreset').value);
+ if(!preset)return;
+ modeRevision++;
+ Object.assign(p,defaults,preset.dimensions);
+ for(const [key] of dimDefs)$('p_'+key).value=p[key];
+ refreshGeometry();
+ const rows=amazonBoxes.map(([code,length,width,height])=>{
+  const sizes=catalogSizes(length,width,height);
+  const attempts=[...preset.results[code]].map(key=>({
+   category:presetOutcome[key],ok:key==='C',detail:'Resultado de referencia. Pulsa Ver para reproducir la caída.'
+  }));
+  return {code,sizes,attempts,category:catalogCategory(attempts)};
+ });
+ const run={config:{...p},configKey:JSON.stringify(p),rows};
+ $('physicsCatalogAccepted').checked=true;
+ renderCatalogRun(run,null);
+ catalogRun=run;
+ $('physicsCatalogStatus').textContent='Resultados guardados. Se probó cada caja por separado, con el depósito vacío.';
+}
+function markCatalogConfigurationChanged(){
+ if(!catalogRun || catalogRun.configKey===JSON.stringify(p))return;
+ $('catalogPreset').value='';
+ if(!catalogAttempt)$('physicsCatalogStatus').textContent='Las medidas cambiaron. La tabla sigue mostrando la configuración anterior hasta que repitas la prueba.';
+}
 const yieldCatalogFrame=()=>new Promise(requestAnimationFrame);
 function trialResult(result){
+ if(result.category)return result.category;
  if(result.ok)return 'Cae';
  if(result.outcome.startsWith('No entra'))return 'No entra';
  if(result.outcome.startsWith('Atasco') || result.outcome.startsWith('Quedó detenida'))return 'Se atora';
@@ -1394,6 +1467,7 @@ function renderCatalogRun(run,previous){
  }
  const rows=run.rows.map(row=>{
   const tr=document.createElement('tr');
+  tr.dataset.accepted=String(row.category==='Cae');
   const header=document.createElement('th');
   header.scope='row';
   header.textContent=row.code;
@@ -1437,6 +1511,7 @@ function renderCatalogRun(run,previous){
   return tr;
  });
  $('physicsCatalogRows').replaceChildren(...rows);
+ filterCatalogRows();
  output.hidden=false;
  output.open=true;
 }
@@ -1449,10 +1524,11 @@ async function testPhysicsCatalog(){
  }
  const setup=capturePhysicalSetup(true);
  const run={config:setup.config,configKey:JSON.stringify(setup.config),rows:[]};
- const button=$('physicsCatalog');
+ const button=$('physicsCatalog'),presets=$('catalogPreset');
  const attempt=new AbortController();
  catalogAttempt=attempt;
  button.disabled=true;
+ presets.disabled=true;
  try{
   const engine=await loadPhysicsEngine();
   if(attempt.signal.aborted)return;
@@ -1460,13 +1536,11 @@ async function testPhysicsCatalog(){
    status.textContent=`Probando ${run.rows.length+1} de ${amazonBoxes.length}: ${code}…`;
    await yieldCatalogFrame();
    if(attempt.signal.aborted)return;
-   const sizes=[{w:width,h:height,d:length},{w:length,h:height,d:width}];
+   const sizes=catalogSizes(length,width,height);
    const normal=physicalTrace(engine,sizes[0],setup,false);
    const turned=width===length?normal:physicalTrace(engine,sizes[1],setup,false);
    const attempts=[normal,turned];
-   const results=attempts.map(trialResult);
-   const category=['Cae','Inconclusa','Se atora','Cae fuera','No entra'].find(label=>results.includes(label));
-   run.rows.push({code,sizes,attempts,category});
+   run.rows.push({code,sizes,attempts,category:catalogCategory(attempts)});
   }
   renderCatalogRun(run,catalogRun);
   catalogRun=run;
@@ -1479,6 +1553,7 @@ async function testPhysicsCatalog(){
  }finally{
   catalogAttempt=null;
   button.disabled=false;
+  presets.disabled=false;
   if(attempt.signal.aborted)status.textContent='Prueba del catálogo detenida al cambiar de modo.';
  }
 }
@@ -1589,7 +1664,7 @@ function buttonControls(){
  cabinetLocked=cabinetOffset===0 && j.cabinetLocked!==false;
  updateCabinetControls();
  prepareNext();
- build();$('message').textContent='Medidas y cajas guardadas recuperadas.';
+ build();markCatalogConfigurationChanged();$('message').textContent='Medidas y cajas guardadas recuperadas.';
  frameFocusedView();}catch(err){$('message').textContent='No se pudo leer la configuración.';}e.target.value='';};
  function planMeasures(){
   return {...p,lidW:p.openingW-2*p.gap,lidH:p.openingH-2*p.gap,tongueW:tongueWidth(),
@@ -1827,6 +1902,6 @@ function downloadPlanImage(measures,views){
 }
 function download(text,name,type){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
 function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;viewportHeight=h;camera.aspect=w/h;camera.fov=w<480?51:44;camera.updateProjectionMatrix();renderer.setSize(w,h);buildDimensions();frameFocusedView();}
-init();settingsUI();syncCabinetDimensions();initAmazonCatalog();buttonControls();updateCabinetControls();build();updateDeliveryMode();resize();window.addEventListener('resize',resize);
+init();settingsUI();syncCabinetDimensions();initAmazonCatalog();initCatalogPresets();buttonControls();updateCabinetControls();build();updateDeliveryMode();resize();window.addEventListener('resize',resize);
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.06,(now-prev)/1000);prev=now;advancePhysicsTrial(dt);if(playing){setTime(time+dt*speed);if(time>=12)playing=false;}if(camTween){const u=Math.min(1,(now-camTween.start)/600);camera.position.lerpVectors(camTween.from,camTween.to,smooth(u));if(u>=1)camTween=null;}orbit.update();renderScene();}requestAnimationFrame(animate);
 </script></body></html>
