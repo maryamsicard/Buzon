@@ -56,6 +56,13 @@ button:hover{background:#dcebf0}
 .detail-key{flex-basis:100%;color:var(--txt)}.detail-key b{color:#126b61}
 .dimension-toggle{display:inline-flex;align-items:center;gap:5px;margin-top:10px;color:#126b61;font-size:12px;font-weight:650;cursor:pointer}
 .display-options{display:flex;flex-wrap:wrap;gap:0 14px}
+.catalog-trial{margin:8px 0 0}.catalog-trial summary{cursor:pointer;color:#126b61;font-weight:650}
+.catalog-trial-scroll{max-height:290px;overflow:auto;border:1px solid var(--edge);border-radius:6px}
+.catalog-trial table{border-collapse:collapse;width:100%;text-align:left;font-size:11px}
+.catalog-trial thead{position:sticky;top:0;background:#edf3f6}
+.catalog-trial th,.catalog-trial td{border-bottom:1px solid var(--edge);padding:6px 4px;vertical-align:top}
+.catalog-trial small{display:block;font-size:10px;font-weight:400}
+.catalog-trial button{display:block;font-size:10px;padding:3px 6px;margin-top:3px}
 .dimension-toggle[hidden]{display:none}.dimension-toggle input{accent-color:#126b61;margin:0}
 .header-links{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:7px 12px}
 .header-links a,.hardware-links a,.back-link,.hardware-shortcut{color:#126b61;text-underline-offset:3px}
@@ -91,6 +98,18 @@ button:hover{background:#dcebf0}
 <div class="buttons"><button class="primary" id="physics">Probar caída con física</button><button id="physicsPause" disabled>Pausar prueba</button></div>
 <p class="muted2">Usa las medidas actuales de la caja. La prueba la introduce centrada, la suelta y cierra la tapa a velocidad fija. La fricción usada es 0.35.</p>
 <div class="card" id="physicsStatus" role="status">Lista para probar una caja con el depósito acoplado.</div>
+<h2>Prueba del catálogo Amazon</h2>
+<div class="buttons"><button id="physicsCatalog">Probar las 56 cajas</button></div>
+<p class="muted2">Cada caja se prueba sola, de frente y girada 90° sobre su base. La tabla muestra cuáles caen por completo y dejan cerrar la tapa.</p>
+<p id="physicsCatalogStatus" class="muted2" role="status"></p>
+<details id="physicsCatalogResults" class="catalog-trial" hidden>
+<summary id="physicsCatalogSummary">Resultados</summary>
+<p id="physicsCatalogConfig" class="muted2"></p>
+<p id="physicsCatalogCompare" class="muted2" hidden></p>
+<div class="catalog-trial-scroll" role="region" aria-label="Resultados de caída por caja" tabindex="0">
+<table><thead><tr><th scope="col">Caja · cm</th><th scope="col">De frente</th><th scope="col">Girada</th></tr></thead><tbody id="physicsCatalogRows"></tbody></table>
+</div>
+</details>
 <h2>Animación ilustrativa</h2>
 <div class="buttons"><button class="primary" id="play">▶ Reproducir entrega</button><button id="pause">Ⅱ Pausar</button><button id="reset">↺ Reiniciar</button></div>
 <div class="buttons" style="margin-top:8px"><button id="open">Abrir tapa</button><button id="place">Colocar caja</button><button id="close">Cerrar y depositar</button><button id="access" aria-expanded="false" aria-controls="accessForm">Abrir puerta interior</button></div>
@@ -1102,11 +1121,47 @@ function setTime(t){time=Math.max(0,Math.min(12,t));let a=0,which='none',mix=0,d
  $('timeline').value=time;$('clock').textContent=time.toFixed(1)+' / 12.0 s';$('phase').textContent=desc;
 }
 let physicsTrial=null,physicsLoading=false;
-let physicsEngine;
+let physicsEnginePromise;
+function loadPhysicsEngine(){
+ if(!physicsEnginePromise){
+  physicsEnginePromise=import('https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.17.3/rapier.es.js')
+   .then(async ({default:engine})=>{await engine.init();return engine;})
+   .catch(error=>{physicsEnginePromise=null;throw error;});
+ }
+ return physicsEnginePromise;
+}
 const physicalStep=1/240;
 const physicalFriction=.35;
 
-function physicalTrace(R){
+function capturePhysicalSetup(empty=false){
+ root.updateMatrixWorld(true);
+ const fixed=[],moving=[];
+ const box=(name,size,x,y,z)=>fixed.push([name,size,new THREE.Vector3(x,y,z)]);
+ const half=p.openingW/2,low=p.entryY,high=low+p.openingH;
+ box('Muro bajo la entrada',[600,low,p.wallD],0,low/2,0);
+ box('Muro sobre la entrada',[600,200,p.wallD],0,high+100,0);
+ for(const side of [-1,1])box('Costado del vano',[250,high-low,p.wallD],side*(half+125),(low+high)/2,0);
+ box('Piso exterior',[1000,20,1000],0,-10,0);
+ function capture(mesh,rotates=false){
+  const {geometry}=mesh;
+  if(!geometry || !['BoxGeometry','CylinderGeometry'].includes(geometry.type))return;
+  const cylinder=geometry.type==='CylinderGeometry';
+  const {width,height,depth,radiusTop}=geometry.parameters;
+  const name=mesh.name||(rotates?'Bisagra de la tapa':'Eje de la pestaña');
+  const size=cylinder?[2*radiusTop,height]:[width,height,depth];
+  const position=rotates?mesh.position.clone():mesh.getWorldPosition(new THREE.Vector3());
+  const rotation=rotates?mesh.quaternion.clone():mesh.getWorldQuaternion(new THREE.Quaternion());
+  (rotates?moving:fixed).push([name,size,position,rotation,cylinder]);
+ }
+ for(const mesh of pivot.parent.children)if(mesh!==pivot && mesh!==guideGroup)capture(mesh);
+ for(const mesh of cabinet.children)if(mesh.isMesh)capture(mesh);
+ capture(access.getObjectByName('Puerta interior opaca'));
+ if(!empty)for(const item of stored)box('Caja depositada',[item.w,item.h,item.d],item.x,item.y,item.z);
+ for(const mesh of pivot.children)capture(mesh,true);
+ return {config:{...p},hingeY,hingeZ,fixed,moving};
+}
+function physicalTrace(R,size=pack,setup=capturePhysicalSetup(),recordFrames=true){
+ const {config:p,hingeY,hingeZ}=setup;
  const world=new R.World({x:0,y:-9.81,z:0});
  world.timestep=physicalStep;
  world.maxCcdSubsteps=4;
@@ -1118,11 +1173,11 @@ function physicalTrace(R){
  const identity=new THREE.Quaternion();
  const rotation=angle=>new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),angle);
  const vec=(x,y,z)=>new THREE.Vector3(x,y,z);
- const dimensions=[pack.w,pack.h,pack.d];
+ const dimensions=[size.w,size.h,size.d];
  const shape=new R.Cuboid(...dimensions.map(n=>n/200));
- const entryShape=new R.Cuboid((pack.w+.2)/200,pack.h/200,pack.d/200);
+ const entryShape=new R.Cuboid((size.w+.2)/200,size.h/200,size.d/200);
  const friction=desc=>desc.setFriction(physicalFriction).setRestitution(.02);
- const record=(position,quaternion,angle,label)=>frames.push({
+ const record=(position,quaternion,angle,label)=>recordFrames && frames.push({
   p:vec(position.x,position.y,position.z).multiplyScalar(100),q:new THREE.Quaternion().copy(quaternion),angle,label
  });
  const finish=(outcome,detail,ok=false)=>({frames,outcome,detail,ok});
@@ -1132,34 +1187,18 @@ function physicalTrace(R){
   const collider=world.createCollider(friction(desc).setContactSkin(.0025),body);
   (body?moving:fixed).push({name,collider});
  };
- const meshSolid=(mesh,body=null)=>{
-  const {geometry}=mesh;
-  if(!geometry || !['BoxGeometry','CylinderGeometry'].includes(geometry.type))return;
-  const isCylinder=geometry.type==='CylinderGeometry';
-  const {width,height,depth,radiusTop}=geometry.parameters;
-  const name=mesh.name||(body?'Bisagra de la tapa':'Eje de la pestaña');
-  if(body)solid(name,isCylinder?[2*radiusTop,height]:[width,height,depth],mesh.position,mesh.quaternion,body,isCylinder);
-  else solid(name,isCylinder?[2*radiusTop,height]:[width,height,depth],mesh.getWorldPosition(vec()),mesh.getWorldQuaternion(new THREE.Quaternion()),null,isCylinder);
- };
  try{
-  root.updateMatrixWorld(true);
-  const half=p.openingW/2,low=p.entryY,high=low+p.openingH;
-  const front=p.wallD/2,boxFront=-front-dockingGap,boxBack=boxFront-p.boxD;
+  for(const [name,dimensions,position,quaternion,cylinder] of setup.fixed){
+   solid(name,dimensions,position,quaternion,null,cylinder);
+  }
+  const half=p.openingW/2,front=p.wallD/2,boxFront=-front-dockingGap,boxBack=boxFront-p.boxD;
   const floor=p.boxFloor+cabinetWallThickness;
-  // Four solids model the parts of the wall around the opening.
-  solid('Muro bajo la entrada',[600,low,p.wallD],vec(0,low/2,0));
-  solid('Muro sobre la entrada',[600,200,p.wallD],vec(0,high+100,0));
-  for(const side of [-1,1])solid('Costado del vano',[250,high-low,p.wallD],vec(side*(half+125),(low+high)/2,0));
-  solid('Piso exterior',[1000,20,1000],vec(0,-10,0));
-  for(const mesh of pivot.parent.children)if(mesh!==pivot && mesh!==guideGroup)meshSolid(mesh);
-  for(const mesh of cabinet.children)if(mesh.isMesh)meshSolid(mesh);
-  meshSolid(access.getObjectByName('Puerta interior opaca'));
-  for(const box of stored)solid('Caja depositada',[box.w,box.h,box.d],vec(box.x,box.y,box.z));
-
   const opened=rotation(PI/2);
   const lid=world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased()
    .setTranslation(0,hingeY/100,hingeZ/100).setRotation(opened));
-  for(const mesh of pivot.children)meshSolid(mesh,lid);
+  for(const [name,dimensions,position,quaternion,cylinder] of setup.moving){
+   solid(name,dimensions,position,quaternion,lid,cylinder);
+  }
   world.step();
   const colliders=[...fixed,...moving];
   const findContact=(at,orientation,probe,tolerance)=>{
@@ -1170,10 +1209,10 @@ function physicalTrace(R){
    }
    return deepest;
   };
-  const start=vec(0,(hingeY+Math.max(1.9,p.tongueT/2+.3)+pack.h/2)/100,(front+pack.d/2+25)/100);
+  const start=vec(0,(hingeY+Math.max(1.9,p.tongueT/2+.3)+size.h/2)/100,(front+size.d/2+25)/100);
   const openSteps=Math.round(.6/physicalStep);
-  for(let i=0;i<openSteps;i++)record(start,identity,90*smooth(i/openSteps),'Abriendo la tapa');
-  const targetZ=(hingeZ-Math.min(p.tongueL*.60,pack.d/2+2))/100;
+  for(let i=0;recordFrames && i<openSteps;i++)record(start,identity,90*smooth(i/openSteps),'Abriendo la tapa');
+  const targetZ=(hingeZ-Math.min(p.tongueL*.60,size.d/2+2))/100;
   const insertSteps=Math.ceil((start.z-targetZ)/(.6*physicalStep));
   let position=start.clone();
   for(let i=1;i<=insertSteps;i++){
@@ -1203,7 +1242,7 @@ function physicalTrace(R){
      return finish('Atasco en este intento','La caja quedó presionada contra '+obstruction.name.toLowerCase()+' durante el cierre.');
     }
     // Keep the last valid pose while the solver resolves a transient impact.
-    frames.push(frames.at(-1));
+    if(recordFrames)frames.push(frames.at(-1));
     still=0;
     continue;
    }
@@ -1279,17 +1318,13 @@ async function startPhysicsTrial(){
  $('physics').disabled=true;
  $('physicsStatus').textContent='Preparando la prueba de caída…';
  try{
-  if(!physicsEngine){
-   const {default:engine}=await import('https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.17.3/rapier.es.js');
-   await engine.init();
-   physicsEngine=engine;
-  }
+  const engine=await loadPhysicsEngine();
   if(cabinetOffset>0){$('physicsStatus').textContent='Acerca el depósito al muro antes de probar la caída.';return;}
   stopPhysicsTrial();
   prepareNext();
   setAccessOpen(false);
   selectView('cut');
-  const result=physicalTrace(physicsEngine);
+  const result=physicalTrace(engine);
   physicsTrial={...result,cursor:0,done:false,paused:false};
   $('timeline').disabled=true;
   $('physicsPause').disabled=false;
@@ -1302,6 +1337,117 @@ async function startPhysicsTrial(){
  }finally{
   physicsLoading=false;
   $('physics').disabled=false;
+ }
+}
+
+let catalogRun=null;
+const yieldCatalogFrame=()=>new Promise(requestAnimationFrame);
+function trialResult(result){
+ if(result.ok)return 'Cae';
+ if(result.outcome.startsWith('No entra'))return 'No entra';
+ if(result.outcome.startsWith('Atasco') || result.outcome.startsWith('Quedó detenida'))return 'Se atora';
+ if(result.outcome.startsWith('Cayó fuera'))return 'Cae fuera';
+ return 'Inconclusa';
+}
+function catalogDimensionLabel(config){
+ return `Abertura ${config.openingW} × ${config.openingH} cm · Entrada a ${config.entryY} cm · Muro ${config.wallD} cm · Fondo del depósito ${config.boxD} cm · Pestaña ${Math.min(config.tongueW,config.openingW)} × ${config.tongueL} cm.`;
+}
+function renderCatalogRun(run,previous){
+ const output=$('physicsCatalogResults');
+ const count=label=>run.rows.filter(row=>row.category===label).length;
+ $('physicsCatalogSummary').textContent=
+  `${count('Cae')} de ${run.rows.length} caen y cierran · ${count('No entra')} no entran · ${count('Se atora')} se atoran · ${count('Cae fuera')} caen fuera · ${count('Inconclusa')} inconclusas.`;
+ $('physicsCatalogConfig').textContent=catalogDimensionLabel(run.config);
+ const comparison=$('physicsCatalogCompare');
+ comparison.hidden=!previous;
+ if(previous){
+  const old=previous.rows.filter(row=>row.category==='Cae').map(row=>row.code);
+  const now=run.rows.filter(row=>row.category==='Cae').map(row=>row.code);
+  const gains=now.filter(code=>!old.includes(code)),losses=old.filter(code=>!now.includes(code));
+  comparison.textContent=`Prueba anterior: ${old.length} de ${previous.rows.length}. ${catalogDimensionLabel(previous.config)} Ahora caen: ${gains.join(', ')||'ninguna'}. Dejan de caer: ${losses.join(', ')||'ninguna'}.`;
+ }
+ const rows=run.rows.map(row=>{
+  const tr=document.createElement('tr');
+  const header=document.createElement('th');
+  header.scope='row';
+  header.textContent=row.code;
+  const size=document.createElement('small');
+  size.textContent=`${row.sizes[0].w} × ${row.sizes[0].h} × ${row.sizes[0].d}`;
+  header.append(size);
+  tr.append(header);
+  row.attempts.forEach((result,index)=>{
+   const cell=document.createElement('td');
+   cell.textContent=trialResult(result);
+   cell.title=result.detail;
+   cell.className=result.ok?'ok':'bad';
+   const replay=document.createElement('button');
+   replay.type='button';
+   replay.textContent='Ver';
+   replay.setAttribute('aria-label',`Ver caja ${row.code} ${index?'girada':'de frente'}: ${cell.textContent}`);
+   replay.onclick=()=>{
+    if(JSON.stringify(p)!==run.configKey){
+     $('physicsCatalogStatus').textContent='Las medidas cambiaron. Repite la prueba del catálogo para ver esta caja con la configuración actual.';
+     return;
+    }
+    if(stored.length){
+     $('physicsCatalogStatus').textContent='Vacía el depósito para reproducir esta prueba en las mismas condiciones.';
+     return;
+    }
+    if(physicsLoading || cabinetOffset>0){
+     $('physicsCatalogStatus').textContent='Acerca el depósito y espera a que termine la preparación de la prueba.';
+     return;
+    }
+    pack={...row.sizes[index]};
+    $('amazonBox').value=index?'':row.code;
+    if(index)$('amazonHelp').textContent='Caja '+row.code+' girada 90° para la prueba de caída.';
+    for(const key of ['w','h','d'])$('pack_'+key).value=pack[key];
+    build();
+    startPhysicsTrial();
+    if(window.matchMedia('(max-width:860px)').matches)$('simulador').scrollIntoView({block:'start'});
+   };
+   cell.append(replay);
+   tr.append(cell);
+  });
+  return tr;
+ });
+ $('physicsCatalogRows').replaceChildren(...rows);
+ output.hidden=false;
+ output.open=true;
+}
+async function testPhysicsCatalog(){
+ if(physicsLoading || $('physicsCatalog').disabled)return;
+ const status=$('physicsCatalogStatus');
+ if(cabinetOffset>0 || accessOpen){
+  status.textContent='Acerca el depósito al muro y cierra la puerta de recogida antes de probar el catálogo.';
+  return;
+ }
+ const setup=capturePhysicalSetup(true);
+ const run={config:setup.config,configKey:JSON.stringify(setup.config),rows:[]};
+ const button=$('physicsCatalog');
+ button.disabled=true;
+ try{
+  const engine=await loadPhysicsEngine();
+  for(const [code,length,width,height] of amazonBoxes){
+   status.textContent=`Probando ${run.rows.length+1} de ${amazonBoxes.length}: ${code}…`;
+   await yieldCatalogFrame();
+   const sizes=[{w:width,h:height,d:length},{w:length,h:height,d:width}];
+   const normal=physicalTrace(engine,sizes[0],setup,false);
+   const turned=width===length?normal:physicalTrace(engine,sizes[1],setup,false);
+   const attempts=[normal,turned];
+   const results=attempts.map(trialResult);
+   const category=['Cae','Inconclusa','Se atora','Cae fuera','No entra'].find(label=>results.includes(label));
+   run.rows.push({code,sizes,attempts,category});
+  }
+  renderCatalogRun(run,catalogRun);
+  catalogRun=run;
+  status.textContent=JSON.stringify(p)===run.configKey
+   ? 'Prueba completa. Ajusta las medidas del buzón y vuelve a probar para comparar.'
+   : 'Prueba completa con las medidas que tenía el buzón al comenzar.';
+ }catch(error){
+  console.error(error);
+  status.textContent='No se pudo completar la prueba del catálogo. Vuelve a intentarlo.';
+ }finally{
+  button.disabled=false;
  }
 }
 
@@ -1337,6 +1483,7 @@ function selectView(key){
 }
 function buttonControls(){
  $('physics').onclick=startPhysicsTrial;
+ $('physicsCatalog').onclick=testPhysicsCatalog;
  $('physicsPause').onclick=()=>{
   if(!physicsTrial || physicsTrial.done)return;
   physicsTrial.paused=!physicsTrial.paused;
