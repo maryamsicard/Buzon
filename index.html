@@ -72,8 +72,6 @@ button:hover{background:#dcebf0}
 .dimension-toggle[hidden]{display:none}.dimension-toggle input{accent-color:#126b61;margin:0}
 .header-links{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:7px 12px}
 .header-links a,.hardware-links a,.back-link,.hardware-shortcut{color:#126b61;text-underline-offset:3px}
-.access-form{margin-top:8px}.access-form p{margin:4px 0}.access-form .buttons{align-items:center}
-.access-form input{width:78px;padding:6px 8px;letter-spacing:.18em;border:1px solid #a8b9c4;border-radius:6px;color:var(--txt);background:#fff}
 .export-options{margin:10px 0}.export-options summary{cursor:pointer;color:#465d6f}.export-options .buttons{margin-top:8px}
 .hardware{max-width:1200px;margin:auto;padding:32px 24px 40px;color:var(--txt)}
 .hardware header{padding:0 0 14px;background:none;box-shadow:none;align-items:flex-start}
@@ -197,13 +195,7 @@ button:hover{background:#dcebf0}
 <input class="range" type="range" id="cabinetOffset" min="0" max="120" step="1" value="0">
 <div class="buttons"><button id="rollBack">Retirar 60 cm</button><button id="dock">Volver al muro</button></div>
 <p class="muted2">Se desplazan el gabinete, la puerta, las ruedas y las cajas guardadas. El marco y el mecanismo de entrada permanecen montados en el muro. Acerca el depósito para recibir cajas.</p>
-<div class="buttons" style="margin-top:8px"><button id="access" aria-expanded="false" aria-controls="accessForm">Abrir puerta interior</button></div>
-<form id="accessForm" class="card access-form" hidden>
-<label for="accessCode"><strong>Cerradura de combinación</strong></label>
-<p class="muted2" id="accessHint">Usa 1234 en la demostración.</p>
-<div class="buttons"><input id="accessCode" type="text" inputmode="numeric" maxlength="4" autocomplete="off" aria-describedby="accessHint accessError"><button type="submit">Desbloquear y abrir</button></div>
-<p id="accessError" class="bad" role="status" hidden>Combinación incorrecta.</p>
-</form>
+<div class="buttons" style="margin-top:8px"><button type="button" id="access">Abrir puerta interior</button></div>
 </section>
 <section class="control-panel" id="panel-planos" role="tabpanel" aria-labelledby="tab-planos" tabindex="0" hidden>
 <h2 id="exportar">Planos y exportación</h2>
@@ -991,11 +983,7 @@ function setAccessOpen(open){
  accessOpen=open;
  access.rotation.y=open?.95:0;
  doorCam.rotation.z=open?PI/2:0;
- $('accessForm').hidden=true;
- $('accessCode').value='';
- $('accessError').hidden=true;
- $('access').setAttribute('aria-expanded','false');
- $('access').textContent=open?'Cerrar y bloquear puerta':'Abrir puerta interior';
+ $('access').textContent=open?'Cerrar puerta interior':'Abrir puerta interior';
  if(changed)checkSelectedPackage();
 }
 function build(){
@@ -1785,26 +1773,9 @@ function buttonControls(){
  };
  $('access').onclick=()=>{
   selectView('inside');
-  if(accessOpen){
-   setAccessOpen(false);
-   $('message').textContent='Puerta interior cerrada y bloqueada.';
-  }else{
-   $('accessForm').hidden=false;
-   $('access').setAttribute('aria-expanded','true');
-   $('accessCode').focus();
-  }
+  setAccessOpen(!accessOpen);
+  $('message').textContent=accessOpen?'Puerta interior abierta.':'Puerta interior cerrada.';
  };
- $('accessForm').onsubmit=e=>{
-  e.preventDefault();
-  if($('accessCode').value.trim()!=='1234'){
-   $('accessError').hidden=false;
-   $('accessCode').select();
-   return;
-  }
-  setAccessOpen(true);
-  $('message').textContent='Combinación correcta. Puerta interior desbloqueada y abierta.';
- };
- $('accessCode').oninput=()=>$('accessError').hidden=true;
  $('angle').oninput=e=>setAngle(+e.target.value);
  $('nextDelivery').onclick=()=>{
   const trial=physicsTrial;
