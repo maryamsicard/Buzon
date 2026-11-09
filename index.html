@@ -96,8 +96,8 @@ button:hover{background:#dcebf0}
 <label class="dimension-toggle" title="Visible en las vistas Exterior y Fachada"><input type="checkbox" id="showFacade" checked> Mostrar fachada</label>
 </div>
 <label class="check"><input id="section" type="checkbox"> Mostrar muro y gabinete completos</label>
-<label class="check"><input id="ghost" type="checkbox" checked> Gabinete semitransparente</label>
-<label class="check"><input id="guide" type="checkbox" checked> Resaltar eje de la tapa</label>
+<label class="check"><input id="ghost" type="checkbox"> Gabinete semitransparente</label>
+<label class="check"><input id="guide" type="checkbox"> Resaltar eje de la tapa</label>
 </section>
 <div class="row"><strong>Simulación de entrega</strong><span class="pill" id="state">Cerrado</span></div>
 <section id="physicsPanel" aria-labelledby="physicsTitle">
@@ -247,7 +247,7 @@ const dimGroups=[
 const dimDefs=dimGroups.flatMap(group=>group.fields).filter(field=>field[2]!==null);
 const amazonBoxes=[["0A0",23.5,16.5,5.7],["A1",25.4,17.8,7.6],["A3",25.4,17.8,13.3],["W01",25.4,20.3,16.5],["A0",26,17.8,5.7],["1A1",29.2,21.6,10.8],["A4",30.5,21.6,17.8],["BM2",30.5,24.1,6.3],["Z1",30.5,22.9,10.2],["1A3",31.8,24.8,8.3],["1AE",33,25.4,21],["1A5",34.3,27.9,12.1],["1AC",34.3,28.6,24.8],["1A9",35.6,31.8,24.1],["1A7",36.8,20.3,18.4],["1B2",38.1,30.5,7.6],["Z4",40.6,31.1,15.9],["B0",43.2,27.9,27.9],["1B4",45.1,36.2,21],["1B9",45.7,22.9,17.8],["1BA",48.3,31.1,28.6],["C1",48.3,33,10.2],["C4",48.3,33.7,30.5],["1BB",48.9,37.5,31.1],["2A0",50.8,40.6,17.8],["2A5",50.8,27.9,10.8],["P2",52.7,45.1,39.4],["2A6",53.3,43.2,26.7],["P1",54,38.7,15.9],["1BG",54.6,45.7,13.3],["2BB",55.9,41.9,35.6],["B05",55.9,38.1,12.7],["D4",55.9,45.7,30.5],["S5",56.5,46.4,31.1],["2A7",61,43.8,10.8],["B14",61,45.7,20.3],["P5",65.4,52.7,41.9],["2A8",66,48.3,22.9],["F3",66,48.3,22.2],["P4",66,41.3,18.4],["P9",69.8,57.1,20.3],["B11",71.1,40.6,15.2],["P7",71.1,49.5,21],["3A1",78.7,52.1,26.7],["Q2",86.4,55.9,34.3],["Q3",92.7,26.7,8.3],["Q4",94,50.8,7.6],["Q5",94,76.2,7.6],["Q6",94,73.7,7.6],["U0",101.6,30.5,23.5],["U3",101.6,26.7,9.5],["U5",101.6,50.8,35.6],["J7",102.9,13.3,13.3],["K89",113,25.4,25.4],["J7A",133.3,13.3,13.3],["CB4",147.3,30.5,16.5]];
 const packDefs=[['w','Ancho',5,170],['h','Alto',3,120],['d','Fondo',5,170]];
-let p={...defaults},pack={w:40,h:18,d:18},theta=0,accessOpen=false,cut=true,ghost=true,guides=true,prev=performance.now();
+let p={...defaults},pack={w:40,h:18,d:18},theta=0,accessOpen=false,cut=!$('section').checked,ghost=$('ghost').checked,guides=$('guide').checked,prev=performance.now();
 let scene,camera,renderer,orbit,root,cabinet,pivot,parcel,access,guideGroup,camTween=null,boxCenterZ=0,hingeZ=0,hingeY=0;
 let cabinetOffset=0,cabinetLocked=true,rollingMeshes=[];
 let currentView='outer',latchParts=[],doorCam;
