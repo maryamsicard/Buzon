@@ -1,6 +1,6 @@
 import {jsPDF} from 'https://cdn.jsdelivr.net/npm/jspdf@4.2.1/+esm';
 
-const ink='#233543', muted='#506677', accent='#126b61', rule='#c6d3dc', pale='#eef3f6';
+const ink='#513b32', muted='#765d50', accent='#934a36', rule='#e5dbd2', pale='#f6f1eb', paper='#fcfaf7';
 const format=new Intl.NumberFormat('es-MX',{maximumFractionDigits:2});
 const cm=value=>format.format(value)+' cm';
 const pair=(a,b)=>format.format(a)+' × '+cm(b);
@@ -23,7 +23,7 @@ export function createPlans(p,hardware,views=[]){
  function line(x1,y1,x2,y2,color=ink,width=.28){
   pdf.setDrawColor(color);pdf.setLineWidth(width);pdf.line(x1,y1,x2,y2);
  }
- function rect(x,y,width,height,fill='#ffffff',stroke=rule){
+ function rect(x,y,width,height,fill=paper,stroke=rule){
   pdf.setFillColor(fill);pdf.setDrawColor(stroke);pdf.setLineWidth(.28);
   pdf.rect(x,y,width,height,'FD');
  }
@@ -48,7 +48,7 @@ export function createPlans(p,hardware,views=[]){
   text(String(number).padStart(2,'0')+' / '+String(5+views.length).padStart(2,'0'),283,201,{size:9,color:accent,bold:true,align:'right'});
  }
  function panel(x,y,width,height,title){
-  rect(x,y,width,height,'#ffffff');
+  rect(x,y,width,height);
   text(title,x+6,y+8,{size:11,bold:true});
  }
  function dimH(a,b,y,anchor,label){
@@ -79,7 +79,7 @@ export function createPlans(p,hardware,views=[]){
   }
   rows.forEach((row,index)=>{
    const top=y+8+index*rowHeight;
-   if(index%2===1)rect(x,top,width,rowHeight,'#f8fafb','#f8fafb');
+   if(index%2===1)rect(x,top,width,rowHeight,'#f9f5f0','#f9f5f0');
    line(x,top+rowHeight,x+width,top+rowHeight,rule,.18);
    left=x;
    row.forEach((value,col)=>{
@@ -97,9 +97,9 @@ export function createPlans(p,hardware,views=[]){
   const ground=161,high=ground-(p.entryY+h)*scale,low=ground-p.entryY*scale;
   const left=78-w*scale/2,right=78+w*scale/2;
   rect(left-(f+8)*scale,high-(f+5)*scale,(w+2*f+16)*scale,ground-high+(f+5)*scale,pale);
-  rect(left-f*scale,high-f*scale,(w+2*f)*scale,(h+2*f)*scale,'#657582',ink);
+  rect(left-f*scale,high-f*scale,(w+2*f)*scale,(h+2*f)*scale,'#776a60',ink);
   rect(left,high,w*scale,h*scale,'#ffffff',ink);
-  rect(left+p.gap*scale,high+p.gap*scale,p.lidW*scale,p.lidH*scale,'#bac8d0',ink);
+  rect(left+p.gap*scale,high+p.gap*scale,p.lidW*scale,p.lidH*scale,'#c9b8ab',ink);
   line(28,ground,131,ground,muted);
   dimH(left,right,high-f*scale-4,high,'Ancho '+cm(w));
   dimV(high,low,right+f*scale+9,right,'Alto '+cm(h));
@@ -109,9 +109,9 @@ export function createPlans(p,hardware,views=[]){
   const scaleB=Math.min(88/(outerW+16),92/p.boxTop),cx=215;
   const x1=cx-outerW*scaleB/2,x2=cx+outerW*scaleB/2;
   const top=ground-p.boxTop*scaleB,base=ground-p.boxFloor*scaleB;
-  rect(x1,top,outerW*scaleB,p.boxH*scaleB,'#dce5eb',ink);
-  rect(x1+scaleB,top+scaleB,(outerW-2)*scaleB,(p.boxH-2)*scaleB,'#f5f8f9',muted);
-  for(const y of [top+14,base-14])rect(x1-1,y-2.6,2,5.2,'#748793',muted);
+  rect(x1,top,outerW*scaleB,p.boxH*scaleB,'#e8ded4',ink);
+  rect(x1+scaleB,top+scaleB,(outerW-2)*scaleB,(p.boxH-2)*scaleB,'#f6f1eb',muted);
+  for(const y of [top+14,base-14])rect(x1-1,y-2.6,2,5.2,'#938276',muted);
   circle(x2-5,(top+base)/2,1.65);
   for(const x of [x1+7*scaleB,x2-7*scaleB]){
    const r=p.wheelD*scaleB/2;
@@ -137,7 +137,7 @@ export function createPlans(p,hardware,views=[]){
    line(edge,y(p.entryY+h+f),edge,y(p.entryY+h),ink,.65);
    line(edge,y(p.entryY),edge,y(p.entryY-f),ink,.65);
   }
-  rect(cab,y(p.boxTop),p.boxD*scale,p.boxH*scale,'#dce5eb',ink);
+  rect(cab,y(p.boxTop),p.boxD*scale,p.boxH*scale,'#e8ded4',ink);
   line(cab+p.cabinetWallThickness*scale,y(p.boxTop-p.cabinetWallThickness),right,y(p.boxTop-p.cabinetWallThickness),muted);
   line(x,y(p.boxTop),right,y(p.boxTop),accent,.24);
   const hingeX=wall-1.3*scale,hingeY=y(p.entryY+1.2);
@@ -158,7 +158,7 @@ export function createPlans(p,hardware,views=[]){
   const wallEnd=py+p.wallD*s,boxStart=wallEnd+p.dockingGap*s,boxEnd=boxStart+p.boxD*s;
   rect(px-8,py,outerW*s+16,p.wallD*s,pale,muted);
   rect(px+p.cabinetWallThickness*s,py,w*s,p.wallD*s,'#ffffff',muted);
-  rect(px,boxStart,outerW*s,p.boxD*s,'#dce5eb',ink);
+  rect(px,boxStart,outerW*s,p.boxD*s,'#e8ded4',ink);
   rect(px+p.cabinetWallThickness*s,boxStart,w*s,(p.boxD-p.cabinetWallThickness)*s,'#ffffff',muted);
   line(px,boxEnd,px+outerW*s,boxEnd,ink,.65);
   dimH(px+p.cabinetWallThickness*s,px+outerW*s-p.cabinetWallThickness*s,boxEnd+12,boxEnd,'Ancho interior '+cm(w));
@@ -173,17 +173,17 @@ export function createPlans(p,hardware,views=[]){
   const s=Math.min(59/(w+2*f),53/(h+2*f+p.tongueL));
   for(const [cx,inside] of [[56.5,false],[240.5,true]]){
    const x=cx-(w+2*f)*s/2,y=63;
-   rect(x,y,(w+2*f)*s,(h+2*f)*s,'#8a9ba6',ink);
+   rect(x,y,(w+2*f)*s,(h+2*f)*s,'#a08e81',ink);
    rect(x+f*s,y+f*s,w*s,h*s,'#ffffff',ink);
    if(inside){
     const latch=y+(f+p.entryY+h-p.latchY)*s;
-    for(const px of [x+f*s-1.6,x+(w+f)*s])rect(px,latch-1.5,1.6,3,'#d5e3e8',accent);
+    for(const px of [x+f*s-1.6,x+(w+f)*s])rect(px,latch-1.5,1.6,3,'#e4d5c8',accent);
    }
    dimH(x,x+(w+2*f)*s,115,y+(h+2*f)*s,pair(w+2*f,h+2*f));
   }
   const cx=148.5,y=63,axis=y+p.lidH*s;
-  rect(cx-p.lidW*s/2,y,p.lidW*s,p.lidH*s,'#bac8d0',ink);
-  rect(cx-p.tongueW*s/2,axis,p.tongueW*s,p.tongueL*s,'#e1e9ee',ink);
+  rect(cx-p.lidW*s/2,y,p.lidW*s,p.lidH*s,'#c9b8ab',ink);
+  rect(cx-p.tongueW*s/2,axis,p.tongueW*s,p.tongueL*s,'#eee4dc',ink);
   line(cx-p.tongueW*s/2,axis,cx+p.tongueW*s/2,axis,'#a66e35',1.1);
   text('Conjunto basculante',cx,120,{size:8,color:muted,align:'center'});
   for(const x of [99,191]){
@@ -205,11 +205,11 @@ export function createPlans(p,hardware,views=[]){
  {
   const bw=outerW,bh=p.boxH,d=p.boxD,g=Math.max(bw,d,bh)*.17;
   const panelPieces=[
-   {id:2,points:[[-bw/2-g,0,0],[-bw/2-g,0,d],[-bw/2-g,bh,d],[-bw/2-g,bh,0]],fill:'#ccd9e1'},
-   {id:3,points:[[-bw/2,-g,0],[bw/2,-g,0],[bw/2,-g,d],[-bw/2,-g,d]],fill:'#d3e0e6'},
-   {id:1,points:[[-bw/2,bh+g,0],[bw/2,bh+g,0],[bw/2,bh+g,d],[-bw/2,bh+g,d]],fill:'#b7cbd5'},
-   {id:2,points:[[bw/2+g,0,0],[bw/2+g,0,d],[bw/2+g,bh,d],[bw/2+g,bh,0]],fill:'#ccd9e1'},
-   {id:4,points:[[-bw/2+1,1,d+g*1.7],[bw/2-1,1,d+g*1.7],[bw/2-1,bh-1,d+g*1.7],[-bw/2+1,bh-1,d+g*1.7]],fill:'#e8f0f3'}
+   {id:2,points:[[-bw/2-g,0,0],[-bw/2-g,0,d],[-bw/2-g,bh,d],[-bw/2-g,bh,0]],fill:'#ddcfc3'},
+   {id:3,points:[[-bw/2,-g,0],[bw/2,-g,0],[bw/2,-g,d],[-bw/2,-g,d]],fill:'#e4d8cc'},
+   {id:1,points:[[-bw/2,bh+g,0],[bw/2,bh+g,0],[bw/2,bh+g,d],[-bw/2,bh+g,d]],fill:'#cdb9aa'},
+   {id:2,points:[[bw/2+g,0,0],[bw/2+g,0,d],[bw/2+g,bh,d],[bw/2+g,bh,0]],fill:'#ddcfc3'},
+   {id:4,points:[[-bw/2+1,1,d+g*1.7],[bw/2-1,1,d+g*1.7],[bw/2-1,bh-1,d+g*1.7],[-bw/2+1,bh-1,d+g*1.7]],fill:'#f2e9e1'}
   ];
   const project=([x,y,z])=>[.88*x-.62*z,-y+.21*x+.33*z];
   const projected=panelPieces.map(piece=>({...piece,points:piece.points.map(project)}));
