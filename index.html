@@ -384,7 +384,7 @@ function initAmazonCatalog(){
  const groups=[['Pequeñas · hasta 40 cm',0,40],['Medianas · más de 40 a 60 cm',40,60],
  ['Grandes · más de 60 a 90 cm',60,90],['Muy grandes · más de 90 cm',90,Infinity]]
   .map(([label,low,high])=>[label,amazonBoxes.filter(([,length])=>length>low && length<=high)]);
- groups.push(['Sobres de Amazon · medidas de referencia',amazonEnvelopes]);
+ groups.unshift(['Sobres de Amazon · medidas de referencia',amazonEnvelopes]);
  for(const [label,packages]of groups){
   const group=document.createElement('optgroup');group.label=label;
   for(const [code,L,W,H]of packages){
