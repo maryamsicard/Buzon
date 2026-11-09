@@ -244,7 +244,7 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 const $=id=>document.getElementById(id);const PI=Math.PI;
 const frameThickness=.25,cabinetWallThickness=1.4,dockingGap=2;
-const defaults={openingW:60,openingH:50,wallD:20,entryY:80,tongueL:35,tongueW:60,tongueT:.3,boxD:50,frameW:5,gap:.7,wheelD:7.5};
+const defaults={openingW:60,openingH:50,wallD:20,entryY:80,tongueL:35,tongueW:60,tongueT:.3,boxD:60,frameW:5,gap:.7,wheelD:7.5};
 const dimGroups=[
  {title:'01 · Muro y abertura de entrada',description:'Hueco por donde entra el paquete y posición respecto al piso.',
   fields:[['openingW','Ancho de abertura',45,120,'Medida horizontal del hueco exterior.'],['openingH','Alto de abertura',35,100,'Medida vertical del hueco exterior.'],['entryY','Altura de entrada desde el piso',65,180,'Desde el piso hasta el borde inferior de la abertura.'],['wallD','Espesor del muro',20,35,'Profundidad de la barda; referencia actual: 20 cm.']]},
