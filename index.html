@@ -158,16 +158,6 @@ button:hover{background:#dcebf0}
 <div class="buttons"><button class="primary" id="physics" disabled>Entregar paquete</button><button id="physicsPause" disabled hidden>Pausar prueba</button><button id="physicsReset" hidden>Reiniciar prueba</button></div>
 <div class="card" id="physicsStatus" role="status" hidden></div>
 <details class="catalog-trial">
-<summary>Tabla de medidas por grupo</summary>
-<p class="muted2">La columna Entrada mide desde el piso hasta el borde inferior de la abertura. Muro de 20 cm. Se probaron las cajas por separado con el depósito vacío y fricción de 0.30, 0.35 y 0.40. La caja se coloca junto al eje y debe descansar sobre la pestaña hasta que empiece a cerrar la tapa. Los grupos son acumulativos.</p>
-<div class="delivery-mode">
-<label for="catalogPreset">Aplicar medidas probadas</label>
-<select id="catalogPreset"><option value="">Personalizadas</option></select>
-</div>
-<table><thead><tr><th scope="col">Grupo</th><th scope="col">Abertura</th><th scope="col">Entrada</th><th scope="col">Fondo</th><th scope="col">Pestaña</th><th scope="col">Pasan</th></tr></thead><tbody id="catalogGroupReference"></tbody></table>
-<p class="muted2">Medidas en cm. Abertura: ancho × alto. Pestaña: ancho × largo. La prueba busca una orientación válida entre las seis caras y giros en diagonal.</p>
-</details>
-<details class="catalog-trial">
 <summary>Comprobar todo el catálogo</summary>
 <div class="buttons"><button id="physicsCatalog">Probar las 56 cajas</button></div>
 <p class="muted2">Cada caja se prueba por separado con el depósito vacío. En la entrega individual también se consideran las cajas que hayas guardado.</p>
@@ -1538,12 +1528,6 @@ async function startPhysicsTrial(){
  }
 }
 
-const catalogPresets=[
- {id:'small',label:'Pequeñas',openingW:45,openingH:35,boxD:50,entryY:80,coverage:'16/16'},
- {id:'medium',label:'Hasta medianas',openingW:60,openingH:50,boxD:60,entryY:100,coverage:'34/34'},
- {id:'large',label:'Hasta grandes',openingW:70,openingH:65,boxD:50,entryY:80,coverage:'40/45'},
- {id:'full',label:'Catálogo completo',openingW:70,openingH:82,boxD:105,entryY:80,coverage:'44–45/56'}
-];
 let catalogRun=null;
 const yieldCatalogFrame=()=>new Promise(requestAnimationFrame);
 function trialResult(result){
@@ -1554,31 +1538,7 @@ function trialResult(result){
  if(result.outcome.startsWith('Cayó fuera'))return 'Cae fuera';
  return 'Inconclusa';
 }
-function initCatalogPresets(){
- const selector=$('catalogPreset');
- for(const {id,label,openingW,openingH,boxD,entryY,coverage} of catalogPresets){
-  const opening=openingW+' × '+openingH;
-  selector.append(new Option(label+' · '+opening+' cm · fondo '+boxD+' cm',id));
-  const row=$('catalogGroupReference').insertRow();
-  const heading=document.createElement('th');
-  heading.scope='row';
-  heading.textContent=label;
-  row.append(heading);
-  for(const value of [opening,entryY,boxD,openingW+' × 35',coverage])row.insertCell().textContent=value;
- }
- selector.onchange=()=>{
-  const preset=catalogPresets.find(item=>item.id===selector.value);
-  if(!preset)return;
-  const {openingW,openingH,boxD,entryY}=preset;
-  Object.assign(p,defaults,{openingW,openingH,boxD,entryY});
-  for(const [key] of dimDefs)$('p_'+key).value=p[key];
-  refreshGeometry();
-  markCatalogConfigurationChanged(false);
- };
- $('physicsCatalogAccepted').onchange=filterCatalogRows;
-}
-function markCatalogConfigurationChanged(clearPreset=true){
- if(clearPreset)$('catalogPreset').value='';
+function markCatalogConfigurationChanged(){
  if(catalogRun && catalogRun.configKey!==JSON.stringify(p) && !catalogRunning){
   $('physicsCatalogStatus').textContent='Las medidas cambiaron. Repite la prueba para actualizar los resultados.';
  }
@@ -1739,6 +1699,7 @@ function buttonControls(){
  $('physicsReset').onclick=()=>prepareNext();
  $('physicsTimeline').oninput=e=>seekPhysicsTrial(Number(e.target.value)/Number(e.target.max));
  $('physicsCatalog').onclick=testPhysicsCatalog;
+ $('physicsCatalogAccepted').onchange=filterCatalogRows;
  $('physicsPause').onclick=()=>{
   if(!physicsTrial || physicsTrial.done)return;
   physicsTrial.paused=!physicsTrial.paused;
@@ -2076,6 +2037,6 @@ function downloadPlanImage(measures,views){
 }
 function download(text,name,type){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
 function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;viewportHeight=h;camera.aspect=w/h;camera.fov=w<480?51:44;camera.updateProjectionMatrix();renderer.setSize(w,h);buildDimensions();frameFocusedView();}
-init();settingsUI();syncCabinetDimensions();initAmazonCatalog();initCatalogPresets();initControlTabs();buttonControls();updateCabinetControls();build();prepareNext();checkSelectedPackage();resize();window.addEventListener('resize',resize);
+init();settingsUI();syncCabinetDimensions();initAmazonCatalog();initControlTabs();buttonControls();updateCabinetControls();build();prepareNext();checkSelectedPackage();resize();window.addEventListener('resize',resize);
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.06,(now-prev)/1000);prev=now;advancePhysicsTrial(dt);if(camTween){const u=Math.min(1,(now-camTween.start)/600);camera.position.lerpVectors(camTween.from,camTween.to,smooth(u));if(u>=1)camTween=null;}orbit.update();renderScene();}requestAnimationFrame(animate);
 </script></body></html>
