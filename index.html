@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Buzón 3D · V21</title>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Buzón 3D · V22</title>
 <style>
 :root{color-scheme:dark;--bg:#0b111a;--panel:#172332;--edge:#334456;--soft:#abbccc;--mint:#81dfc6;--txt:#eef4f8}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:13px system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}button,input,select{font:inherit}button{background:#273a4a;color:var(--txt);border:1px solid #405b6e;border-radius:8px;padding:9px 10px;cursor:pointer}button:hover{background:#345569}.primary{background:#156c61;border-color:#439d8b}.primary:hover{background:#1a8576}.active{background:#205e55;border-color:var(--mint)}.muted{color:var(--soft)}.muted2{font-size:11px;color:#a0b5c4;line-height:1.55}.pill{display:inline-block;color:#98e8d2;border:1px solid #367f70;border-radius:20px;padding:5px 9px;font-size:11px}header{padding:14px 20px;background:#111b28;border-bottom:1px solid var(--edge);display:flex;align-items:center;justify-content:space-between;gap:10px}h1{font-size:18px;margin:0}header small{display:block;color:#a4b6c7;margin-top:4px}main{display:grid;grid-template-columns:350px minmax(0,1fr);height:calc(100dvh - 71px);min-height:690px}.sidebar{padding:17px;overflow:auto;border-right:1px solid var(--edge);background:var(--panel)}.sidebar h2{font-size:11px;text-transform:uppercase;color:#a8c3d1;letter-spacing:.13em;margin:21px 0 10px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.buttons{display:flex;flex-wrap:wrap;gap:6px}.buttons button{font-size:12px}.card{background:#243547;border-left:3px solid #6ad6b8;border-radius:7px;padding:10px 12px;font-size:12px;line-height:1.55}.warning{border-left-color:#e1aa5a}.gridfields{display:grid;grid-template-columns:1fr 83px;align-items:center;gap:8px;margin:8px 0}.gridfields label{color:#ccdfed;font-size:12px}.gridfields input{background:#101c29;border:1px solid #465d71;color:#e1f8f0;padding:7px 8px;border-radius:6px;width:100%;text-align:right}.divline{height:1px;background:var(--edge);margin:20px 0}.range{width:100%;accent-color:#67cbb5;margin:10px 0}.check{display:flex;align-items:center;gap:7px;font-size:12px;color:#cbd9e5;margin:8px 0}.check input{accent-color:#6bd6bd}.viewport{position:relative;min-height:500px;background:radial-gradient(ellipse at 45% 45%,#263748,#101722 75%);overflow:hidden}#canvas{position:absolute;inset:0}#canvas canvas{display:block}
 .corner{margin-left:auto;color:#c8deea;font-size:10px}.footer{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,#0d1725 20%);padding:25px 17px 14px}.footer .row{font-size:12px}.footer input{width:100%;accent-color:#68d5bd}.legend{color:#b5c9d4;font-size:11px;margin-top:8px}.tiny{font-size:11px;color:#acbecb}.btnsmall{font-size:11px;padding:7px}.status{font-size:12px;font-weight:650}.ok{color:#8ce4c8}.bad{color:#ffd19a}@media(max-width:860px){main{display:flex;height:auto;flex-direction:column}.viewport{height:65vh;min-height:440px}.sidebar{order:2;overflow:visible}.corner{display:none}}@media print{.sidebar,header,.footer,.corner{display:none!important}.viewport{height:650px}main{display:block}}
@@ -55,9 +55,6 @@ button:hover{background:#dcebf0}
 #amazonBox[data-fit="blocked"],#amazonBox option[data-fit="blocked"]{color:#66727c;background:#edf0f2}
 #packageFields[data-fit="blocked"] input{color:#66727c;background:#edf0f2}
 #packageFit{margin:8px 0;min-height:1.3em}
-#reopeningPanel{margin-top:12px}
-#reopeningPanel p{margin:4px 0}
-#reopeningStatus[data-blocked="true"]{color:#a52020;font-weight:650}
 .gridfields input[readonly]{background:#eef4f7}.buttons button:disabled{opacity:.55;cursor:default}
 .latch-controls{margin:8px 0 12px}.latch-controls .buttons{margin:8px 0}.latch-controls p{margin:6px 0}
 .detail-key{grid-column:1/-1;color:var(--txt);font-size:11px}.detail-key b{color:#126b61}
@@ -136,7 +133,7 @@ button:hover{background:#dcebf0}
 }
 </style></head><body>
 <div class="simulator-shell" id="simulatorShell">
-<header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V21 · Modelo conceptual editable · unidades en cm</small></div><div class="view-heading">
+<header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V22 · Modelo conceptual editable · unidades en cm</small></div><div class="view-heading">
 <div class="view-copy"><strong id="viewTitle">Vista exterior</strong> <p id="viewDescription">Arrastra con el mouse para rotar y usa la rueda para acercarte. La tapa está remetida hasta la cara interior del muro.</p></div>
 <span class="corner">Calle (+Z) · Casa (−Z)</span>
 <div id="latchKey" class="detail-key" hidden><b>Verde</b> · leva del depósito <span aria-hidden="true">|</span> <strong style="color:var(--txt)">Acero claro</strong> · receptor del marco y acceso Allen</div>
@@ -192,12 +189,6 @@ button:hover{background:#dcebf0}
 </div>
 <div class="buttons"><button class="primary" id="physics" disabled>Entregar paquete</button><button id="clearPackages">Vaciar buzón</button></div>
 <p class="muted2" id="storedStatus" role="status">Buzón vacío.</p>
-<div class="card" id="physicsStatus" role="status" hidden></div>
-<section id="reopeningPanel" class="card" aria-labelledby="reopeningTitle" hidden>
-<strong id="reopeningTitle">Volver a abrir la tapa</strong>
-<p class="muted2">Mueve el deslizador debajo del modelo. Las cajas permanecen en su posición de reposo.</p>
-<p id="reopeningStatus" role="status"></p>
-</section>
 </section>
 <details class="catalog-trial">
 <summary>Comprobar todo el catálogo</summary>
@@ -1388,14 +1379,9 @@ function stopPhysicsTrial(){
  resumeAfterSeek=false;
  physicsTrial=null;
  if(parcel)parcel.visible=false;
- $('physicsStatus').hidden=true;
  $('state').textContent='Lista';
  $('phase').textContent='Prueba lista';
- $('physicsStatus').style.borderLeftColor='';
- $('physicsStatus').textContent=cabinetOffset>0
-  ? 'Acerca el depósito al muro para probar una caída.'
-  : 'Lista para probar una caja con el depósito acoplado.';
- updateReopeningControls();
+ updateViewportSlider();
 }
 function drawPhysicsTrial(){
  const frame=physicsTrial.frames[Math.floor(physicsTrial.cursor)];
@@ -1419,14 +1405,15 @@ function renderPhysicsProgress(){
   if(trial.done){
    trial.done=false;
    trial.label=null;
-   updateReopeningControls();
+   updateViewportSlider();
    $('state').textContent='Prueba de caída';
-   $('physicsStatus').style.borderLeftColor='#269b89';
+   const status=$('packageFit');
+   delete status.dataset.status;
+   status.textContent='Entregando paquete…';
   }
   if(trial.label!==frame.label){
    trial.label=frame.label;
    $('phase').textContent=frame.label;
-   $('physicsStatus').textContent=frame.label+'…';
   }
   return;
  }
@@ -1441,18 +1428,21 @@ function renderPhysicsProgress(){
   updateStoredStatus();
   checkSelectedPackage();
  }
- updateReopeningControls();
+ updateViewportSlider();
  $('phase').textContent=trial.ok?'Volver a abrir la tapa':trial.outcome;
- $('state').textContent=trial.outcome;
- $('physicsStatus').textContent=trial.outcome+'. '+trial.detail;
- $('physicsStatus').style.borderLeftColor=trial.ok?'#269b89':'#c98731';
+ $('state').textContent=trial.ok?'Lista':trial.outcome;
+ if(!trial.ok){
+  const status=$('packageFit');
+  status.dataset.status='blocked';
+  status.textContent=trial.outcome+'. '+trial.detail;
+ }
 }
 function seekPhysicsTrial(fraction){
  reopeningRevision++;
  manualLidAngle=null;
  if(cabinetOffset>0){
   $('physicsTimeline').value=0;
-  $('physicsStatus').textContent='Acerca el depósito al muro antes de probar la caída.';
+  $('packageFit').textContent='Acerca el depósito al muro antes de probar la caída.';
   return;
  }
  if(!physicsTrial || physicsLoading){
@@ -1494,14 +1484,6 @@ function updateViewportSlider(){
   slider.setAttribute('aria-valuetext',angle+' grados de apertura');
   $('clock').textContent=angle+'°';
  }
-}
-function updateReopeningControls(){
- const busy=Boolean(physicsTrial && !physicsTrial.done);
- $('reopeningPanel').hidden=!stored.length;
- updateViewportSlider();
- const status=$('reopeningStatus');
- delete status.dataset.blocked;
- status.textContent=busy?'Espera a que termine la caída.':'Mueve el deslizador para comprobar si la tapa puede abrir.';
 }
 function checkLidSweep(engine,packages){
  const {hingeY,hingeZ,moving}=capturePhysicalSetup(true);
@@ -1564,6 +1546,12 @@ function openingConflictText(contact,limit){
  const part=contact.part==='Pestaña interior solidaria'?'La pestaña interior':'El conjunto de la tapa';
  return part+' interfiere con '+contact.box+'. Apertura libre hasta '+dimensionFormat.format(limit)+'°.';
 }
+function reportOpeningConflict(contact,limit){
+ const status=$('packageFit');
+ status.dataset.status='blocked';
+ status.textContent=openingConflictText(contact,limit);
+ $('state').textContent='Apertura bloqueada';
+}
 async function moveManualLid(angle){
  if(physicsTrial && !physicsTrial.done){setAngle(theta);return;}
  if(physicsTrial && !physicsTrial.ok)stopPhysicsTrial();
@@ -1575,7 +1563,6 @@ async function moveManualLid(angle){
   $('phase').textContent=angle?'Apertura manual de la tapa':'Tapa cerrada';
   return;
  }
- const status=$('reopeningStatus');
  try{
   const engine=await loadPhysicsEngine();
   if(revision!==reopeningRevision)return;
@@ -1583,18 +1570,12 @@ async function moveManualLid(angle){
   manualLidAngle=Math.min(angle,limit);
   setAngle(manualLidAngle);
   $('phase').textContent=contact && angle>limit?'Apertura limitada por una caja':(theta?'Apertura manual de la tapa':'Tapa cerrada');
-  if(contact){
-   status.dataset.blocked='true';
-   status.textContent=openingConflictText(contact,limit);
-  }else{
-   delete status.dataset.blocked;
-   status.textContent='La tapa puede abrir hasta 90° sin tocar las cajas.';
-  }
+  if(contact)reportOpeningConflict(contact,limit);
  }catch(error){
   console.error(error);
   if(revision!==reopeningRevision)return;
   setAngle(theta);
-  status.textContent='No se pudo comprobar la apertura. Intenta mover el deslizador de nuevo.';
+  $('phase').textContent='No se pudo comprobar la apertura';
  }
 }
 
@@ -1669,29 +1650,28 @@ async function checkSelectedPackage(){
  delete selector.dataset.fit;
  delete $('packageFields').dataset.fit;
  delete status.dataset.status;
- if(!code){status.textContent='Selecciona un formato de Amazon o escribe las medidas de tu caja.';return;}
+ if($('state').textContent==='Apertura bloqueada')$('state').textContent='Lista';
+ const chooseBox='Selecciona un formato de Amazon o escribe las medidas de tu caja.';
+ if(!code && !stored.length){status.textContent=chooseBox;return;}
  if(cabinetOffset>0 || accessOpen){
   status.textContent='Acerca el depósito al muro y cierra la puerta interior para comprobar la caja.';
   return;
  }
- status.textContent='Comprobando la caja con gravedad y colisiones…';
+ status.textContent=code?'Comprobando la caja con gravedad y colisiones…':'Comprobando la apertura de la tapa…';
  try{
   const engine=await loadPhysicsEngine();
   await yieldCatalogFrame();
   if(revision!==fitRevision)return;
   const opening=stored.length?getOpeningCheck(engine,packagesForOpening()):null;
-  if(opening?.contact){
-   status.dataset.status='blocked';
-   status.textContent='Para otra entrega, la tapa debe poder abrir hasta 90°. '+openingConflictText(opening.contact,opening.limit);
-   return;
-  }
+  if(opening?.contact){reportOpeningConflict(opening.contact,opening.limit);return;}
+  if(!code){status.textContent=chooseBox;return;}
   const setup=capturePhysicalSetup();
   const result=findDeliveryPose(engine,pack,setup);
   deliveryFit={...result,setup};
   updateViewportSlider();
   if(result.ok){
    markPackageOption(code,false);
-   status.textContent='La caja se sostiene sobre la pestaña y completa la caída.';
+   status.textContent='La caja seleccionada cabe para la siguiente entrega.';
    button.disabled=physicsLoading;
   }else{
    markPackageOption(code,true);
@@ -1728,15 +1708,17 @@ async function startPhysicsTrial(){
   const cursor=seek===null?0:Math.round(seek*(result.frames.length-1));
   physicsTrial={...result,size:fit.size,cursor,done:false,paused,committed:false};
   selectView('cut');
-  updateReopeningControls();
-  $('physicsStatus').hidden=false;
+  updateViewportSlider();
   $('state').textContent='Prueba de caída';
-  $('physicsStatus').style.borderLeftColor='#269b89';
+  const status=$('packageFit');
+  delete status.dataset.status;
+  status.textContent='Entregando paquete…';
   renderPhysicsProgress();
  }catch(error){
   console.error(error);
-  $('physicsStatus').hidden=false;
-  $('physicsStatus').textContent='La prueba de caída no se pudo ejecutar. Vuelve a intentarlo.';
+  const status=$('packageFit');
+  status.dataset.status='blocked';
+  status.textContent='La prueba de caída no se pudo ejecutar. Vuelve a intentarlo.';
  }finally{
   physicsLoading=false;
   requestedSeek=null;
