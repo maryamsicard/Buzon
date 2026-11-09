@@ -138,17 +138,6 @@ button:hover{background:#dcebf0}
 <div class="buttons"><input id="accessCode" type="text" inputmode="numeric" maxlength="4" autocomplete="off" aria-describedby="accessHint accessError"><button type="submit">Desbloquear y abrir</button></div>
 <p id="accessError" class="bad" role="status" hidden>Combinación incorrecta.</p>
 </form>
-<h2>Depósito móvil sobre ruedas</h2>
-<div class="card latch-controls">
-<div class="row"><strong>Cierres ocultos</strong><span id="latchState" class="pill" role="status">Fijado al marco</span></div>
-<div class="buttons"><button id="latchToggle">Liberar depósito</button><button id="latchDetail" data-view="latch">Detalle del cierre</button></div>
-<p id="latchHelp" class="muted2"></p>
-<a class="hardware-shortcut" href="#herrajes-cierres">Ficha y compra del cierre</a>
-</div>
-<div class="row"><label for="cabinetOffset">Separación del muro</label><output id="cabinetOffsetText" class="status" for="cabinetOffset">0 cm</output></div>
-<input class="range" type="range" id="cabinetOffset" min="0" max="120" step="1" value="0">
-<div class="buttons"><button id="rollBack">Retirar 60 cm</button><button id="dock">Volver al muro</button></div>
-<p class="muted2">Se desplazan el gabinete, la puerta, las ruedas y las cajas guardadas. El marco y el mecanismo de entrada permanecen montados en el muro. Acerca el depósito para recibir cajas.</p>
 <h2>Varias entregas · cajas de distintos tamaños</h2>
 <div class="package-panel">
 <div class="row"><strong>Medidas de la siguiente caja</strong><span class="pill">cm</span></div>
@@ -163,6 +152,17 @@ button:hover{background:#dcebf0}
 </div>
 <p class="muted2">Al terminar una caída exitosa puedes guardar la caja en la posición alcanzada para probar otra entrega.</p>
 <div class="card" id="storedStatus" style="margin-top:10px">Depósito vacío · 0 cajas.</div>
+<h2>Depósito móvil sobre ruedas</h2>
+<div class="card latch-controls">
+<div class="row"><strong>Cierres ocultos</strong><span id="latchState" class="pill" role="status">Fijado al marco</span></div>
+<div class="buttons"><button id="latchToggle">Liberar depósito</button><button id="latchDetail" data-view="latch">Detalle del cierre</button></div>
+<p id="latchHelp" class="muted2"></p>
+<a class="hardware-shortcut" href="#herrajes-cierres">Ficha y compra del cierre</a>
+</div>
+<div class="row"><label for="cabinetOffset">Separación del muro</label><output id="cabinetOffsetText" class="status" for="cabinetOffset">0 cm</output></div>
+<input class="range" type="range" id="cabinetOffset" min="0" max="120" step="1" value="0">
+<div class="buttons"><button id="rollBack">Retirar 60 cm</button><button id="dock">Volver al muro</button></div>
+<p class="muted2">Se desplazan el gabinete, la puerta, las ruedas y las cajas guardadas. El marco y el mecanismo de entrada permanecen montados en el muro. Acerca el depósito para recibir cajas.</p>
 <div class="row" style="margin-top:13px"><label for="angle">Apertura de tapa</label><span id="angleText" class="status">0°</span></div><input class="range" type="range" id="angle" min="0" max="90" value="0" step="1">
 <div class="card" id="message" style="margin-top:8px">Observa cómo la tapa exterior y la pestaña interior giran juntas alrededor del mismo eje.</div>
 <div class="divline"></div>
