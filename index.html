@@ -1743,11 +1743,18 @@ function isDefaultCatalogConfig(){
 }
 function renderDeliveryCoverage(accepted){
  const smallAndMedium=amazonBoxes.filter(([,length])=>length<=60);
+ const large=amazonBoxes.filter(([,length])=>length>60 && length<=90);
  const count=smallAndMedium.filter(([code])=>accepted.has(code)).length;
- const groups=count===smallAndMedium.length
+ const largeCount=large.filter(([code])=>accepted.has(code)).length;
+ const veryLargeCount=accepted.size-count-largeCount;
+ const smallSummary=count===smallAndMedium.length
   ? 'Pasan todas las chicas y medianas ('+count+').'
   : 'Pasan '+count+' de '+smallAndMedium.length+' chicas y medianas.';
- $('deliveryCoverage').textContent='Pasan '+accepted.size+' de '+amazonBoxes.length+' cajas del catálogo de Amazon. '+groups;
+ const largeSummary=largeCount===1
+  ? 'Pasa 1 de las '+large.length+' grandes.'
+  : 'Pasan '+largeCount+' de '+large.length+' grandes.';
+ const veryLargeSummary=veryLargeCount===0?'':(veryLargeCount===1?' Pasa 1 muy grande.':' Pasan '+veryLargeCount+' muy grandes.');
+ $('deliveryCoverage').textContent='Pasan '+accepted.size+' de '+amazonBoxes.length+' cajas del catálogo de Amazon. '+smallSummary+' '+largeSummary+veryLargeSummary;
 }
 function updateDeliveryOverview(){
  for(const [id,key] of [['overviewWidth','openingW'],['overviewHeight','openingH'],['overviewDepth','boxD'],['overviewTotal','boxTop']]){
