@@ -3,6 +3,7 @@ import {jsPDF} from 'https://cdn.jsdelivr.net/npm/jspdf@4.2.1/+esm';
 const ink='#513b32', muted='#765d50', accent='#934a36', rule='#e5dbd2', pale='#f6f1eb', paper='#fcfaf7';
 const format=new Intl.NumberFormat('es-MX',{maximumFractionDigits:2});
 const cm=value=>format.format(value)+' cm';
+const mm=value=>format.format(value*10)+' mm';
 const pair=(a,b)=>format.format(a)+' × '+cm(b);
 
 export function createPlans(p,hardware,views=[]){
@@ -31,11 +32,11 @@ export function createPlans(p,hardware,views=[]){
   pdf.setFillColor(fill);pdf.setDrawColor(stroke);pdf.setLineWidth(.25);
   pdf.circle(x,y,r,'FD');
  }
- function polygon(points,fill,stroke=ink){
+ function outline(points){
   const [[x,y],...rest]=points;
   const steps=rest.map(([u,v],i)=>[u-points[i][0],v-points[i][1]]);
-  pdf.setFillColor(fill);pdf.setDrawColor(stroke);pdf.setLineWidth(.35);
-  pdf.lines(steps,x,y,[1,1],'FD',true);
+  pdf.setDrawColor(ink);pdf.setLineWidth(.35);
+  pdf.lines(steps,x,y,[1,1],'S',true);
  }
  function header(number,title,description){
   if(number>1)pdf.addPage();
@@ -44,7 +45,7 @@ export function createPlans(p,hardware,views=[]){
   text(description,14,34,{size:10,color:muted});
   line(14,40,283,40,rule);
   line(14,195,283,195,rule);
-  text('Cotas en centímetros. Verificar montaje, tolerancias y anclajes antes de fabricar.',14,201,{size:8,color:muted});
+  text('Cotas en centímetros salvo indicación. Verificar tolerancias, materiales y anclajes antes de fabricar.',14,201,{size:8,color:muted});
   text(String(number).padStart(2,'0')+' / '+String(5+views.length).padStart(2,'0'),283,201,{size:9,color:accent,bold:true,align:'right'});
  }
  function panel(x,y,width,height,title){
@@ -193,9 +194,9 @@ export function createPlans(p,hardware,views=[]){
   table(14,135,[['Pieza o conjunto',70],['Cantidad',26],['Medida nominal',173]],[
    ['Marco de ambas caras','2 remates',pair(w+2*f,h+2*f)+' exteriores · espesor '+cm(p.frameThickness)],
    ['Cantos y apoyo del muro','1 juego','Abertura '+pair(w,h)+' · canto a lo largo del muro de '+cm(p.wallD)],
-   ['Tapa exterior','1',pair(p.lidW,p.lidH)+' · holgura perimetral '+cm(p.gap)],
-   ['Pestaña solidaria','1',pair(p.tongueW,p.tongueL)+' · espesor '+cm(p.tongueT)],
-   ['Eje compartido y soportes','1 conjunto','Largo del eje '+cm(p.tongueW)]
+   ['Tapa exterior','1',pair(p.lidW,p.lidH)+(p.lidThickness?' · espesor '+mm(p.lidThickness):'')+' · holgura por lado '+mm(p.gap)],
+   ['Pestaña solidaria','1',pair(p.tongueW,p.tongueL)+' · espesor '+mm(p.tongueT)],
+   ['Eje compartido y soportes','1 conjunto','Largo del eje '+cm(p.tongueW)+(p.shaftDiameter?' · diámetro '+mm(p.shaftDiameter):'')]
   ],8.4);
  }
 
@@ -205,11 +206,11 @@ export function createPlans(p,hardware,views=[]){
  {
   const bw=outerW,bh=p.boxH,d=p.boxD,g=Math.max(bw,d,bh)*.17;
   const panelPieces=[
-   {id:2,points:[[-bw/2-g,0,0],[-bw/2-g,0,d],[-bw/2-g,bh,d],[-bw/2-g,bh,0]],fill:'#ddcfc3'},
-   {id:3,points:[[-bw/2,-g,0],[bw/2,-g,0],[bw/2,-g,d],[-bw/2,-g,d]],fill:'#e4d8cc'},
-   {id:1,points:[[-bw/2,bh+g,0],[bw/2,bh+g,0],[bw/2,bh+g,d],[-bw/2,bh+g,d]],fill:'#cdb9aa'},
-   {id:2,points:[[bw/2+g,0,0],[bw/2+g,0,d],[bw/2+g,bh,d],[bw/2+g,bh,0]],fill:'#ddcfc3'},
-   {id:4,points:[[-bw/2+1,1,d+g*1.7],[bw/2-1,1,d+g*1.7],[bw/2-1,bh-1,d+g*1.7],[-bw/2+1,bh-1,d+g*1.7]],fill:'#f2e9e1'}
+   {id:2,points:[[-bw/2-g,0,0],[-bw/2-g,0,d],[-bw/2-g,bh,d],[-bw/2-g,bh,0]]},
+   {id:3,points:[[-bw/2,-g,0],[bw/2,-g,0],[bw/2,-g,d],[-bw/2,-g,d]]},
+   {id:1,points:[[-bw/2,bh+g,0],[bw/2,bh+g,0],[bw/2,bh+g,d],[-bw/2,bh+g,d]]},
+   {id:2,points:[[bw/2+g,0,0],[bw/2+g,0,d],[bw/2+g,bh,d],[bw/2+g,bh,0]]},
+   {id:4,points:[[-bw/2+1,1,d+g*1.7],[bw/2-1,1,d+g*1.7],[bw/2-1,bh-1,d+g*1.7],[-bw/2+1,bh-1,d+g*1.7]]}
   ];
   const project=([x,y,z])=>[.88*x-.62*z,-y+.21*x+.33*z];
   const projected=panelPieces.map(piece=>({...piece,points:piece.points.map(project)}));
@@ -231,21 +232,21 @@ export function createPlans(p,hardware,views=[]){
   const place=([x,y])=>[96+(x-(minX+maxX)/2)*s,66+(y-minY)*s];
   for(const piece of projected){
    const poly=piece.points.map(place);
-   polygon(poly,piece.fill);
+   outline(poly);
    const average=axis=>poly.reduce((sum,q)=>sum+q[axis],0)/poly.length;
    badge(piece.id,average(0),average(1));
   }
   const [lockX,lockY]=project([bw/2-7,bh/2,d+g*1.7]);
   const lock=place([lockX+doorShift,lockY]);
-  circle(...lock,1.05);
-  for(const wheel of separatedWheels){const [x,y]=place(wheel);circle(x,y,2.1);}
+  circle(...lock,1.05,paper);
+  for(const wheel of separatedWheels){const [x,y]=place(wheel);circle(x,y,2.1,paper);}
   const [wx,wy]=place(separatedWheels[3]);badge(5,wx+7,wy+2);
   const parts=[
    ['Techo',pair(bw,d)],
-   ['Laterales (2)',pair(d,bh)],
+   ['Laterales (2)',pair(d,bh)+' · espesor modelado '+mm(p.cabinetWallThickness)],
    ['Piso',pair(bw,d)],
-   ['Puerta de recogida',pair(bw-2,bh-2)],
-   ['Rodajas (4)',cm(p.wheelD)+' de diámetro']
+   ['Puerta de recogida',pair(bw-2,bh-2)+(p.doorThickness?' · espesor modelado '+mm(p.doorThickness):'')],
+   ['Rodajas (4)','Ø '+cm(p.wheelD)+' · altura de montaje '+cm(p.boxFloor)]
   ];
   parts.forEach(([name,value],i)=>{
    const y=68+i*18;
@@ -284,38 +285,50 @@ export function createPlans(p,hardware,views=[]){
  const viewSheets=[
   {
    title:'Vista 3D exterior',
-   description:'Perspectiva desde la calle con el depósito acoplado y el muro en transparencia.',
+   description:'Dibujo de aristas desde la calle. El muro se representa por su contorno.',
    imageTitle:'06A  Marco y abertura',
    notes:'La altura de entrada se mide desde el piso hasta el borde inferior de la abertura.',
    measures:[['Ancho de abertura',w],['Alto de abertura',h],['Altura de entrada',p.entryY],['Espesor del muro',p.wallD]]
   },
   {
    title:'Vista 3D interior',
-   description:'Perspectiva desde la casa con la puerta de recogida cerrada y las ruedas apoyadas en el piso.',
+   description:'Dibujo de aristas del depósito desde la casa, con la puerta cerrada.',
    imageTitle:'07A  Depósito y ruedas',
    notes:'La altura total incluye las ruedas. La profundidad corresponde al cuerpo del depósito.',
    measures:[['Ancho interior',w],['Profundidad',p.boxD],['Altura total',p.boxTop],['Altura del cuerpo',p.boxH],['Diámetro de rueda',p.wheelD]]
   },
   {
    title:'Vista 3D del mecanismo',
-   description:'Perspectiva de la tapa abierta, la pestaña interior y el eje compartido.',
+   description:'Dibujo de aristas del conjunto fijo con la tapa abierta y detalle del cierre desmontable.',
    imageTitle:'08A  Conjunto fijo con tapa abierta',
    notes:'La tapa y la pestaña giran juntas sobre el eje que las une al marco.',
    measures:[['Alto de tapa',p.lidH],['Largo de pestaña',p.tongueL],['Ancho de pestaña',p.tongueW],['Longitud del eje',p.tongueW],['Espesor de pestaña',p.tongueT]]
   }
  ];
- views.forEach((image,i)=>{
+ views.forEach((item,i)=>{
+  const image=item.image??item;
   const view=viewSheets[i];
   header(6+i,view.title,view.description);
   panel(14,47,199,138,view.imageTitle);
   pdf.addImage(image,'PNG',18,59,191,122,undefined,'FAST');
-  panel(219,47,64,138,'Cotas principales');
-  view.measures.forEach(([label,value],j)=>{
-   const y=67+j*16;
-   text(label,225,y,{size:9.5,color:muted});
-   text(cm(value),225,y+5,{size:12,bold:true});
-  });
-  paragraph(view.notes,225,155,52,8.5);
+  if(item.details){
+   panel(219,47,64,138,'Detalles del conjunto');
+   item.details.forEach(([tag,label,description],j)=>{
+    const y=67+j*35;
+    badge(tag,227.5,y-1.2);
+    text(label,232,y,{size:8.8,bold:true});
+    paragraph(description,225,y+6,52,8.4);
+    if(j<item.details.length-1)line(225,y+28,277,y+28,rule,.18);
+   });
+  }else{
+   panel(219,47,64,138,'Cotas principales');
+   view.measures.forEach(([label,value],j)=>{
+    const y=67+j*16;
+    text(label,225,y,{size:9.5,color:muted});
+    text(cm(value),225,y+5,{size:12,bold:true});
+   });
+   paragraph(view.notes,225,155,52,8.5);
+  }
   text('Perspectiva sin escala.',225,177,{size:8.5,color:accent,bold:true});
  });
  return pdf.output('blob');

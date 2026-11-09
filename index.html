@@ -291,6 +291,7 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 const $=id=>document.getElementById(id);const PI=Math.PI;
 const frameThickness=.25,cabinetWallThickness=1.4,dockingGap=2;
+const lidThickness=.5,doorThickness=1.5,shaftDiameter=1.7;
 const defaults={openingW:60,openingH:60,wallD:20,boxTop:160,tongueL:30,tongueW:60,tongueT:.3,boxD:60,frameW:5,gap:.7,wheelD:7.5};
 const minEntryHeight=65,maxEntryHeight=180;
 const wheelOptions=[
@@ -1087,10 +1088,10 @@ function build(){
  pivot=new THREE.Group();pivot.name='Tapa y pestaña — una pieza rígida';pivot.position.set(0,hingeY,hingeZ);wallAssembly.add(pivot);
  const lidW=W-2*p.gap,lidH=H-2*p.gap;
  const hingeWidth=tongueWidth();
- meshBox(pivot,lidW,lidH,.5,0,lidH/2,0,mat.lid,'Tapa exterior');
+ meshBox(pivot,lidW,lidH,lidThickness,0,lidH/2,0,mat.lid,'Tapa exterior');
  meshBox(pivot,hingeWidth,p.tongueL,p.tongueT,0,-p.tongueL/2,0,mat.tongue,'Pestaña interior solidaria');
  // Shaft and hinges occupy the same origin.
- cylinder(wallAssembly,.85,hingeWidth,0,hingeY,hingeZ,mat.hinge);
+ cylinder(wallAssembly,shaftDiameter/2,hingeWidth,0,hingeY,hingeZ,mat.hinge);
  // Fixed supports connect the ends of the axle to the interior rim, below the lid.
  const bracketWidth=(W-hingeWidth)/2+1;
  for(const side of [-1,1]){
@@ -1115,7 +1116,7 @@ function build(){
  buildLatches(wallAssembly,BW/2,boxFront);
  // Room-facing back door. Door hinge is on its left vertical side, opening towards the room.
  access=new THREE.Group();access.name='Puerta de recogida';access.position.set(-BW/2+.8,(boxTop+bottom)/2,boxBack-.8);cabinet.add(access);
- meshBox(access,BW-2,boxH-2,1.5,(BW-2)/2,0,0,cabinetMat,'Puerta interior opaca');
+ meshBox(access,BW-2,boxH-2,doorThickness,(BW-2)/2,0,0,cabinetMat,'Puerta interior opaca');
  buildCombinationLock(BW,boxBack);
  for(const yy of [-boxH*.3,boxH*.3])cylinder(access,1.2,7,0,yy,0,mat.handle).rotation.set(0,0,0);
  access.rotation.y=accessOpen?.95:0;
@@ -2093,7 +2094,7 @@ function buttonControls(){
  frameFocusedView();}catch(err){$('message').textContent='No se pudo leer la configuración.';}e.target.value='';};
  function planMeasures(){
   return {...p,lidW:p.openingW-2*p.gap,lidH:p.openingH-2*p.gap,tongueW:tongueWidth(),
-   frameThickness,cabinetWallThickness,dockingGap,latchY:latchHeight()};
+   frameThickness,cabinetWallThickness,dockingGap,lidThickness,doorThickness,shaftDiameter,latchY:latchHeight(),wheel:selectedWheel()};
  }
  $('exportPdf').onclick=async()=>{
   const button=$('exportPdf'),status=$('pdfStatus');
@@ -2104,7 +2105,7 @@ function buttonControls(){
   button.disabled=true;
   status.textContent='Preparando el PDF…';
   try{
-   const {createPlans}=await import('./planos.js?v=arcilla');
+   const {createPlans}=await import('./planos.js?v=linea');
    const measures=planMeasures();
    download(createPlans(measures,hardware,capturePlanViews(measures)),'buzon-planos.pdf','application/pdf');
    status.textContent='PDF listo con ocho láminas, incluidas tres vistas 3D acotadas.';
@@ -2126,7 +2127,7 @@ function buttonControls(){
  };
 }
 function capturePlanViews(measures){
- const {openingW,openingH,entryY,wallD,frameW,boxD,boxFloor,boxTop,lidW,lidH,tongueL,tongueW}=measures;
+ const {openingW,openingH,entryY,wallD,frameW,boxD,boxFloor,boxTop,lidW,lidH,tongueL,tongueW,wheel}=measures;
  const half=openingW/2,low=entryY,high=low+openingH,front=wallD/2;
  const outerHalf=half+cabinetWallThickness,boxFront=-front-dockingGap,boxBack=boxFront-boxD;
  const fixed=pivot.parent.clone(false);
@@ -2135,7 +2136,6 @@ function capturePlanViews(measures){
   const copy=child.clone();
   if(child===pivot){
    copy.rotation.x=0;
-   // The technical sheets draw their own dimensions.
    copy.getObjectByName('Cota · Pestaña')?.removeFromParent();
   }
   fixed.add(copy);
@@ -2149,11 +2149,7 @@ function capturePlanViews(measures){
   if(child===access)copy.rotation.y=0;
   deposit.add(copy);
  }
- for(const part of ['Piso deposito','Techo deposito','Lateral deposito izq','Lateral deposito der','Puerta interior opaca']){
-  const mesh=deposit.getObjectByName(part);
-  mesh.material=mat.box;
-  mesh.visible=true;
- }
+ deposit.getObjectByName('Lateral deposito der').visible=true;
  deposit.traverse(part=>{
   if(part.name==='Leva móvil')part.rotation.x=0;
   if(part.name==='Cubierta del cierre')part.visible=true;
@@ -2164,132 +2160,251 @@ function capturePlanViews(measures){
  const model=new THREE.Group();
  model.add(fixed,deposit);
  const side=half+frameW+Math.max(16,openingW*.12);
- const wall=makeWall(-side,side,high+frameW+20,openingW+2*frameThickness,low,high+frameThickness,wallD,mat.wallCut);
+ const wall=makeWall(-side,side,high+frameW+14,openingW+2*frameThickness,low,high+frameThickness,wallD,mat.wallCut);
  model.add(wall);
- const preview=new THREE.Scene();
- preview.background=new THREE.Color(themeColor('--bg'));
- for(const child of scene.children)if(child.isLight && child!==interiorLight)preview.add(child.clone());
- preview.add(model);
- const specs=[
+ const scene=new THREE.Scene();
+ scene.background=new THREE.Color(themeColor('--bg'));
+ scene.add(model);
+
+ const wheelUnit=deposit.getObjectByName('Rodaja industrial 4');
+ const receiver=fixed.getObjectByName('Receptor fijo derecho');
+ const latchPair=new THREE.Group();
+ latchPair.add(receiver.clone(),deposit.getObjectByName('Cierre oculto derecho').clone());
+ latchPair.getObjectByName('Cubierta del cierre').visible=false;
+ latchPair.getObjectByName('Oreja exterior del receptor').visible=false;
+ scene.add(latchPair);
+ latchPair.visible=false;
+
+ const size=value=>dimensionFormat.format(value)+' cm';
+ const mm=value=>dimensionFormat.format(value*10)+' mm';
+ const location=part=>part.getWorldPosition(new THREE.Vector3()).toArray();
+ model.updateMatrixWorld(true);
+ const views=[
   {
-   direction:[.58,.31,1],
+   direction:[.48,.27,1],fixed:true,deposit:true,wall:true,
    marks:[
-    ['Ancho',openingW,[-half,high,front],[half,high,front],[0,-96]],
-    ['Alto',openingH,[-half,high,front],[-half,low,front],[-136,0]],
-    ['Entrada',low,[-half,low,front],[-half,0,front],[-136,0]],
-    ['Muro',wallD,[half,high,front],[half,high,-front],[148,-74]]
+    ['Ancho',openingW,[-half,high,front],[half,high,front],'top'],
+    ['Alto',openingH,[-half,high,front],[-half,low,front],'left'],
+    ['Entrada',low,[-half,low,front],[-half,0,front],'left']
+   ],
+   details:[
+    ['A','Marco en ambas caras','Remates de '+mm(frameThickness)+' de espesor. Ancho visible de '+size(frameW)+'.'],
+    ['B','Fijación al muro','Zonas orientativas en ambos costados del marco. Anclaje y perforaciones por definir en obra.'],
+    ['C','Muro y tapa','Muro de '+size(wallD)+'. Tapa de '+mm(lidThickness)+' con '+mm(measures.gap)+' de holgura por lado.']
+   ],
+   callouts:[
+    ['A',[0,high+frameW/2,front],[34,-42]],
+    ['B',[-half-frameW/2,low+openingH*.32,front],[-41,31],true],
+    ['B',[half+frameW/2,low+openingH*.68,front],[43,20],true],
+    ['C',[half,high,-front],[42,-23]]
    ]
   },
   {
-   direction:[.83,.38,-1],
+   direction:[.77,.32,-1],deposit:true,
    marks:[
-    ['Ancho interior',openingW,[-half,boxTop,boxBack],[half,boxTop,boxBack],[0,-92]],
-    ['Profundidad',boxD,[outerHalf,boxFloor,boxBack],[outerHalf,boxFloor,boxFront],[-84,64]],
-    ['Total con ruedas',boxTop,[-outerHalf,boxTop,boxBack],[-outerHalf,0,boxBack],[112,0]]
-   ]
+    ['Ancho interior',openingW,[-half,boxTop,boxBack],[half,boxTop,boxBack],'top'],
+    ['Total con ruedas',boxTop,[outerHalf,boxTop,boxBack],[outerHalf,0,boxBack],'right'],
+    ['Fondo',boxD,[-outerHalf,boxFloor,boxBack],[-outerHalf,boxFloor,boxFront],'bottom']
+   ],
+   details:[
+    ['A','Chapa de combinación','FJM Combi-Cam 7803S-BLK en la puerta, junto al canto libre.'],
+    ['B','Ruedas '+wheel.name,'4 giratorias, 2 con '+wheel.brake+'. Ø '+size(wheel.diameter)+' · altura '+size(wheel.height)+' · placa '+dimensionFormat.format(wheel.plate[0])+' × '+size(wheel.plate[1])+'. '+wheel.models+'.'],
+    ['C','Espesores del modelo','Gabinete de '+mm(cabinetWallThickness)+' y puerta de '+mm(doorThickness)+'. Confirmar calibre de chapa para fabricación.']
+   ],
+   callouts:[
+    ['A',location(deposit.getObjectByName('Cerradura mecánica de combinación')),[47,-16]],
+    ['B',location(wheelUnit.getObjectByName('Rueda de poliuretano / goma')),[40,26]],
+    ['C',[outerHalf,boxTop,boxFront],[38,-20]]
+   ],
+   inset:{group:wheelUnit,direction:[.92,.38,-.83],x:30,y:588,label:'B · Rueda y placa'}
   },
   {
-   direction:[1,.39,.44],
-   open:true,
+   direction:[.75,.47,-1],fixed:true,open:true,
    marks:[
-    ['Alto de tapa',lidH,[lidW/2,hingeY,hingeZ],[lidW/2,hingeY,hingeZ+lidH],[-35,105]],
-    ['Largo de pestaña',tongueL,[tongueW/2,hingeY,hingeZ],[tongueW/2,hingeY,hingeZ-tongueL],[56,108]],
-    ['Eje',tongueW,[-tongueW/2,hingeY,hingeZ],[tongueW/2,hingeY,hingeZ],[370,-200]]
-   ]
+    ['Longitud del eje',tongueW,[-tongueW/2,hingeY,hingeZ],[tongueW/2,hingeY,hingeZ],'top'],
+    ['Largo de pestaña',tongueL,[tongueW/2,hingeY,hingeZ],[tongueW/2,hingeY,hingeZ-tongueL],'bottom'],
+    ['Alto de tapa',lidH,[lidW/2,hingeY,hingeZ],[lidW/2,hingeY,hingeZ+lidH],'left']
+   ],
+   details:[
+    ['A','Eje giratorio y soportes','Eje de '+size(tongueW)+' de largo y Ø '+mm(shaftDiameter)+' en el modelo. Apoyado en ambos extremos del marco interior.'],
+    ['B','Tapa y pestaña solidarias','Pestaña de '+dimensionFormat.format(tongueW)+' × '+size(tongueL)+' y espesor de '+mm(measures.tongueT)+'. Tapa de '+mm(lidThickness)+'.'],
+    ['C','Cierres desmontables','Receptor al marco y leva al depósito. Un cierre por lado, a '+size(measures.latchY)+' del piso. El detalle muestra la leva bajo la cubierta.']
+   ],
+   callouts:[
+    ['A',[tongueW/2,hingeY,hingeZ],[51,10]],
+    ['B',[0,hingeY,hingeZ-tongueL*.72],[-29,54]],
+    ['C',location(receiver),[40,-24]]
+   ],
+   inset:{group:latchPair,direction:[1,.35,-.7],x:1154,y:235,label:'C · Leva y receptor'}
   }
  ];
+
+ const depth=new THREE.MeshBasicMaterial({colorWrite:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
+ const contour=new THREE.LineBasicMaterial({color:themeColor('--txt'),depthWrite:false});
+ const masonry=new THREE.LineBasicMaterial({color:themeColor('--cota-line'),depthTest:false,depthWrite:false});
+ const meshes=[];
+ scene.traverse(part=>{if(part.isMesh)meshes.push(part);});
+ const edges=[];
+ for(const mesh of meshes){
+  const line=new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry,25),mesh===wall?masonry:contour);
+  mesh.material=depth;
+  line.renderOrder=mesh===wall?2:1;
+  mesh.add(line);
+  edges.push(line);
+  if(mesh.geometry.type==='CylinderGeometry'){
+   const geometry=new THREE.BufferGeometry();
+   geometry.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(12),3));
+   const silhouette=new THREE.LineSegments(geometry,contour);
+   silhouette.frustumCulled=false;
+   silhouette.renderOrder=1;
+   silhouette.userData.planCylinder=true;
+   mesh.add(silhouette);
+   edges.push(silhouette);
+  }
+ }
+ // Keep the wall as context while leaving the opening and cabinet visible.
+ wall.material=new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:false});
+
  const width=1440,height=920;
  const savedSize=renderer.getSize(new THREE.Vector2()),savedRatio=renderer.getPixelRatio();
  try{
   renderer.setPixelRatio(1);
   renderer.setSize(width,height,false);
-  return specs.map(({direction,marks,open=false})=>{
-   lid.rotation.x=open?PI/2:0;
-   deposit.visible=!open;
-   wall.visible=!open;
-   model.updateMatrixWorld(true);
-   const bounds=new THREE.Box3().setFromObject(open?fixed:model);
-   const center=bounds.getCenter(new THREE.Vector3());
-   const size=bounds.getSize(new THREE.Vector3());
-   const view=new THREE.OrthographicCamera(-1,1,1,-1,.1,2200);
-   view.position.fromArray(direction).normalize().multiplyScalar(800).add(center);
-   view.lookAt(center);
-   view.updateMatrixWorld();
-   const right=new THREE.Vector3(),up=new THREE.Vector3(),back=new THREE.Vector3();
-   view.matrixWorld.extractBasis(right,up,back);
-   const projectedSpan=axis=>Math.abs(axis.x)*size.x+Math.abs(axis.y)*size.y+Math.abs(axis.z)*size.z;
-   const unitsPerPixel=Math.max(projectedSpan(right)/(width-380),projectedSpan(up)/(height-242));
-   view.left=-width*unitsPerPixel/2;view.right=-view.left;
-   view.top=height*unitsPerPixel/2;view.bottom=-view.top;
-   view.updateProjectionMatrix();
-   renderer.render(preview,view);
-   const canvas=document.createElement('canvas');
-   canvas.width=width;canvas.height=height;
-   const ctx=canvas.getContext('2d');
+  return views.map(spec=>{
+   fixed.visible=!!spec.fixed;
+   deposit.visible=!!spec.deposit;
+   wall.visible=!!spec.wall;
+   lid.rotation.x=spec.open?PI/2:0;
+   const bounds=new THREE.Box3();
+   for(const part of [fixed,deposit,wall])if(part.visible)bounds.expandByObject(part);
+   const view=planDrawingCamera(bounds,spec.direction,width,height,650,360);
+   renderPlanLinework(scene,view);
+   const image=document.createElement('canvas');
+   image.width=width;image.height=height;
+   const ctx=image.getContext('2d');
    ctx.drawImage(renderer.domElement,0,0);
-   drawPlanDimensions(ctx,view,marks);
-   return canvas;
+   drawPlanDimensions(ctx,view,spec.marks,spec.callouts);
+   if(spec.inset){
+    const {group,direction,x,y,label}=spec.inset;
+    const detailScene=new THREE.Scene();
+    detailScene.background=scene.background;
+    const detail=group.clone();
+    detail.position.set(0,0,0);
+    detail.visible=true;
+    detailScene.add(detail);
+    const w=254,h=192;
+    const camera=planDrawingCamera(new THREE.Box3().setFromObject(detail),direction,w,h,28,22);
+    renderer.setSize(w,h,false);
+    renderPlanLinework(detailScene,camera);
+    ctx.drawImage(renderer.domElement,x,y+37);
+    ctx.strokeStyle=themeColor('--cota-line');
+    ctx.lineWidth=1.5;
+    ctx.strokeRect(x,y,w,h+37);
+    ctx.font='700 23px system-ui, sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle=themeColor('--cota');
+    ctx.fillText(label,x+w/2,y+20);
+    renderer.setSize(width,height,false);
+   }
+   return {image,details:spec.details};
   });
  }finally{
+  for(const line of edges)line.geometry.dispose();
+  for(const material of [depth,contour,masonry,wall.material])material.dispose();
   wall.geometry.dispose();
   renderer.setPixelRatio(savedRatio);
   renderer.setSize(savedSize.x,savedSize.y,false);
   renderScene();
  }
 }
-function drawPlanDimensions(ctx,view,marks){
+function renderPlanLinework(scene,view){
+ const direction=view.getWorldDirection(new THREE.Vector3());
+ const inverse=new THREE.Matrix4(),local=new THREE.Vector3();
+ scene.updateMatrixWorld(true);
+ scene.traverseVisible(line=>{
+  if(!line.userData.planCylinder)return;
+  const {height,radiusTop,radiusBottom}=line.parent.geometry.parameters;
+  local.copy(direction).transformDirection(inverse.copy(line.parent.matrixWorld).invert());
+  const tangent=new THREE.Vector2(-local.z,local.x).normalize();
+  const vertices=line.geometry.getAttribute('position');
+  for(let i=0;i<2;i++){
+   const side=i===0?-1:1;
+   vertices.setXYZ(i*2,side*tangent.x*radiusTop,height/2,side*tangent.y*radiusTop);
+   vertices.setXYZ(i*2+1,side*tangent.x*radiusBottom,-height/2,side*tangent.y*radiusBottom);
+  }
+  vertices.needsUpdate=true;
+ });
+ renderer.render(scene,view);
+}
+function planDrawingCamera(bounds,direction,width,height,gutterX,gutterY){
+ const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
+ const view=new THREE.OrthographicCamera(-1,1,1,-1,.1,2200);
+ view.position.fromArray(direction).normalize().multiplyScalar(800).add(center);
+ view.lookAt(center);
+ view.updateMatrixWorld();
+ const right=new THREE.Vector3(),up=new THREE.Vector3(),back=new THREE.Vector3();
+ view.matrixWorld.extractBasis(right,up,back);
+ const span=axis=>Math.abs(axis.x)*size.x+Math.abs(axis.y)*size.y+Math.abs(axis.z)*size.z;
+ const units=Math.max(span(right)/(width-gutterX),span(up)/(height-gutterY));
+ view.left=-width*units/2;view.right=-view.left;
+ view.top=height*units/2;view.bottom=-view.top;
+ view.updateProjectionMatrix();
+ return view;
+}
+function drawPlanDimensions(ctx,view,marks,callouts){
  const {width,height}=ctx.canvas;
  const project=coordinates=>{
   const point=new THREE.Vector3(...coordinates).project(view);
   return [(point.x+1)*width/2,(1-point.y)*height/2];
  };
- const ink=themeColor('--cota');
- const guide=themeColor('--cota-line');
- const outline=themeColor('--panel');
- ctx.font='700 29px system-ui, sans-serif';
- ctx.textAlign='center';
- ctx.textBaseline='middle';
- ctx.fillStyle=ink;
- for(const [label,value,start,end,[dx,dy]] of marks){
-  const [x1,y1]=project(start),[x2,y2]=project(end);
-  const ax=x1+dx,ay=y1+dy,bx=x2+dx,by=y2+dy;
-  ctx.strokeStyle=guide;
-  ctx.lineWidth=1.6;
+ const path=points=>{
   ctx.beginPath();
-  ctx.moveTo(x1,y1);ctx.lineTo(ax,ay);
-  ctx.moveTo(x2,y2);ctx.lineTo(bx,by);
+  ctx.moveTo(...points[0]);
+  for(const point of points.slice(1))ctx.lineTo(...point);
   ctx.stroke();
-  ctx.strokeStyle=ink;
-  ctx.lineWidth=2.4;
-  ctx.beginPath();
-  ctx.moveTo(ax,ay);ctx.lineTo(bx,by);
-  const length=Math.hypot(bx-ax,by-ay);
-  const tx=(bx-ax)/length,ty=(by-ay)/length;
-  for(const [x,y] of [[ax,ay],[bx,by]]){
-   ctx.moveTo(x-5*(tx-ty),y-5*(ty+tx));
-   ctx.lineTo(x+5*(tx-ty),y+5*(ty+tx));
+ };
+ const ink=themeColor('--cota'),guide=themeColor('--cota-line'),paper=themeColor('--bg');
+ const rails={left:235,right:width-218,top:105,bottom:height-94};
+ ctx.textAlign='center';ctx.textBaseline='middle';
+ for(const [label,value,start,end,side] of marks){
+  const a=project(start),b=project(end);
+  const horizontal=side==='top'||side==='bottom',axis=horizontal?1:0,rail=rails[side];
+  const onRail=point=>point.map((v,i)=>i===axis?rail:v);
+  const p=onRail(a),q=onRail(b);
+  ctx.strokeStyle=guide;ctx.lineWidth=1.7;
+  path([a,p]);path([b,q]);
+  ctx.strokeStyle=ink;ctx.lineWidth=2.6;
+  path([p,q]);
+  for(const [x,y] of [p,q])path([[x-6,y+6],[x+6,y-6]]);
+  const unit=dimensionFormat.format(value)+' cm';
+  const x=(p[0]+q[0])/2,y=(p[1]+q[1])/2;
+  ctx.fillStyle=ink;ctx.font='700 26px system-ui, sans-serif';
+  if(horizontal)ctx.fillText(label+' '+unit,x,y+(side==='top'?-27:28));
+  else{
+   const labelX=x+(side==='left'?-101:100);
+   ctx.fillText(label,labelX,y-15,185);
+   ctx.fillText(unit,labelX,y+17);
   }
-  ctx.stroke();
-  const caption=label+' '+dimensionFormat.format(value)+' cm';
-  const captionWidth=ctx.measureText(caption).width;
-  const side=Math.sign(-ty*dx+tx*dy)||1;
-  const clearance=Math.abs(ty)*captionWidth/2+Math.abs(tx)*15+7;
-  const x=THREE.MathUtils.clamp((ax+bx)/2-ty*side*clearance,captionWidth/2+12,width-captionWidth/2-12);
-  const y=THREE.MathUtils.clamp((ay+by)/2+tx*side*clearance,24,height-24);
-  ctx.lineJoin='round';
-  ctx.lineWidth=5;
-  ctx.strokeStyle=outline;
-  ctx.strokeText(caption,x,y);
-  ctx.fillText(caption,x,y);
+ }
+ for(const [tag,point,[dx,dy],indicative] of callouts){
+  const [x,y]=project(point),cx=x+dx,cy=y+dy;
+  ctx.strokeStyle=ink;ctx.lineWidth=2;
+  if(indicative)ctx.setLineDash([6,5]);
+  path([[x,y],[cx,cy]]);
+  ctx.setLineDash([]);
+  ctx.fillStyle=paper;
+  ctx.beginPath();ctx.arc(cx,cy,15,0,2*PI);ctx.fill();ctx.stroke();
+  ctx.fillStyle=ink;ctx.font='700 23px system-ui, sans-serif';
+  ctx.fillText(tag,cx,cy+1);
  }
 }
-
 function downloadPlanImage(measures,views){
- const [{width,height}]=views;
+ const [{image:{width,height}}]=views;
  const sheet=document.createElement('canvas');
- const margin=62,gap=36,titleBand=68,header=145;
+ const margin=62,gap=36,titleBand=68,header=145,detailsBand=272;
+ const tileHeight=height+titleBand+detailsBand;
  sheet.width=2*(margin+width)+gap;
- sheet.height=header+2*(height+titleBand)+gap+margin;
+ sheet.height=header+2*tileHeight+gap+margin;
  const ctx=sheet.getContext('2d');
  ctx.fillStyle=themeColor('--panel');
  ctx.fillRect(0,0,sheet.width,sheet.height);
@@ -2300,14 +2415,32 @@ function downloadPlanImage(measures,views){
  ctx.font='400 31px system-ui, sans-serif';
  ctx.fillText('Tres vistas 3D acotadas · Medidas en centímetros',margin,111);
  const titles=['01  Vista exterior','02  Vista interior','03  Mecanismo con tapa abierta'];
- views.forEach((view,i)=>{
-  const x=margin+i%2*(width+gap),y=header+Math.floor(i/2)*(height+titleBand+gap);
+ views.forEach(({image,details},i)=>{
+  const x=margin+i%2*(width+gap),y=header+Math.floor(i/2)*(tileHeight+gap);
   ctx.fillStyle=themeColor('--mint');
   ctx.font='700 40px system-ui, sans-serif';
   ctx.fillText(titles[i],x,y+titleBand/2);
-  ctx.drawImage(view,x,y+titleBand);
+  ctx.drawImage(image,x,y+titleBand);
+  let lineY=y+titleBand+height+26;
+  for(const [tag,label,description] of details){
+   ctx.fillStyle=themeColor('--cota');
+   ctx.font='700 27px system-ui, sans-serif';
+   ctx.fillText(tag+' · '+label,x+15,lineY);
+   ctx.font='400 25px system-ui, sans-serif';
+   ctx.fillStyle=themeColor('--txt');
+   let row='';
+   for(const word of description.split(' ')){
+    const next=row?row+' '+word:word;
+    if(ctx.measureText(next).width>width-34){
+     ctx.fillText(row,x+15,lineY+=29);
+     row=word;
+    }else row=next;
+   }
+   ctx.fillText(row,x+15,lineY+=29);
+   lineY+=42;
+  }
  });
- const notesX=margin+width+gap,notesY=header+height+titleBand+gap;
+ const notesX=margin+width+gap,notesY=header+tileHeight+gap;
  ctx.fillStyle=themeColor('--mint');
  ctx.font='700 40px system-ui, sans-serif';
  ctx.fillText('Medidas principales',notesX,notesY+titleBand/2);
