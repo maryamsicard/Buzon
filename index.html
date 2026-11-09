@@ -126,8 +126,8 @@ button:hover{background:#dcebf0}
 <div class="control-tabs" id="controlTabs" role="tablist" aria-label="Controles del simulador">
 <button type="button" role="tab" id="tab-vistas" aria-controls="panel-vistas" aria-selected="false" tabindex="-1">Vista</button>
 <button type="button" role="tab" id="tab-entregas" aria-controls="panel-entregas" aria-selected="true" tabindex="0">Entregas</button>
-<button type="button" role="tab" id="tab-deposito" aria-controls="panel-deposito" aria-selected="false" tabindex="-1">Depósito</button>
 <button type="button" role="tab" id="tab-medidas" aria-controls="panel-medidas" aria-selected="false" tabindex="-1">Medidas</button>
+<button type="button" role="tab" id="tab-deposito" aria-controls="panel-deposito" aria-selected="false" tabindex="-1">Depósito</button>
 <button type="button" role="tab" id="tab-planos" aria-controls="panel-planos" aria-selected="false" tabindex="-1">Planos</button>
 <button type="button" role="tab" id="tab-herrajes" aria-controls="panel-herrajes" aria-selected="false" tabindex="-1">Herrajes</button>
 </div>
@@ -187,6 +187,11 @@ button:hover{background:#dcebf0}
 <p class="muted2">Al terminar una caída exitosa puedes guardar la caja en la posición alcanzada para probar otra entrega.</p>
 <div class="card" id="storedStatus" style="margin-top:10px">Depósito vacío · 0 cajas.</div>
 </section>
+<section class="control-panel" id="panel-medidas" role="tabpanel" aria-labelledby="tab-medidas" tabindex="0" hidden>
+<div class="row"><strong>Dimensiones por componente</strong><span class="pill">cm</span></div><p class="muted2">El ancho interior y la altura del depósito se calculan a partir de la abertura. La profundidad se puede ajustar. Las ruedas determinan la altura de la base sobre el piso.</p>
+<div id="dimensions"></div>
+<div class="card" id="checks" style="margin-top:10px">Preparando comprobaciones...</div>
+</section>
 <section class="control-panel" id="panel-deposito" role="tabpanel" aria-labelledby="tab-deposito" tabindex="0" hidden>
 <h2>Depósito móvil sobre ruedas</h2>
 <div class="card latch-controls">
@@ -206,11 +211,6 @@ button:hover{background:#dcebf0}
 <div class="buttons"><input id="accessCode" type="text" inputmode="numeric" maxlength="4" autocomplete="off" aria-describedby="accessHint accessError"><button type="submit">Desbloquear y abrir</button></div>
 <p id="accessError" class="bad" role="status" hidden>Combinación incorrecta.</p>
 </form>
-</section>
-<section class="control-panel" id="panel-medidas" role="tabpanel" aria-labelledby="tab-medidas" tabindex="0" hidden>
-<div class="row"><strong>Dimensiones por componente</strong><span class="pill">cm</span></div><p class="muted2">El ancho interior y la altura del depósito se calculan a partir de la abertura. La profundidad se puede ajustar. Las ruedas determinan la altura de la base sobre el piso.</p>
-<div id="dimensions"></div>
-<div class="card" id="checks" style="margin-top:10px">Preparando comprobaciones...</div>
 </section>
 <section class="control-panel" id="panel-planos" role="tabpanel" aria-labelledby="tab-planos" tabindex="0" hidden>
 <h2 id="exportar">Planos y exportación</h2>
