@@ -1779,7 +1779,9 @@ function renderDeliveryCoverage(accepted){
   ? 'Pasa 1 de las '+large.length+' grandes.'
   : 'Pasan '+largeCount+' de '+large.length+' grandes.';
  const veryLargeSummary=(veryLargeCount===1?'Pasa ':'Pasan ')+veryLargeCount+' de '+veryLarge.length+' muy grandes.';
- const envelopeSummary=(envelopeCount===1?'Pasa ':'Pasan ')+envelopeCount+' de '+amazonEnvelopes.length+' formatos de sobre (2 cm de grosor).';
+ const envelopeSummary=envelopeCount===amazonEnvelopes.length
+  ? 'Pasan todos los sobres ('+envelopeCount+' de '+amazonEnvelopes.length+', a 2 cm de grosor).'
+  : (envelopeCount===1?'Pasa ':'Pasan ')+envelopeCount+' de '+amazonEnvelopes.length+' formatos de sobre (2 cm de grosor).';
  $('deliveryCoverage').textContent='Pasan '+boxCount+' de '+amazonBoxes.length+' cajas del catálogo de Amazon. '+[smallSummary,largeSummary,veryLargeSummary,envelopeSummary].join(' ');
 }
 function updateDeliveryOverview(){
