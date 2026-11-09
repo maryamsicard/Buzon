@@ -58,7 +58,6 @@ button:hover{background:#dcebf0}
 .display-options{display:flex;flex-wrap:wrap;gap:0 14px}
 .delivery-mode{display:flex;align-items:center;gap:8px;margin-top:10px;color:#364f61;font-size:12px}
 .delivery-mode select{min-width:0;flex:1;padding:6px;border:1px solid #bacbd6;border-radius:6px;background:#fff;color:#213a48}
-[data-animation-only][hidden]{display:none}
 .catalog-trial{margin:8px 0 0}.catalog-trial summary{cursor:pointer;color:#126b61;font-weight:650}
 .catalog-trial-scroll{max-height:290px;overflow:auto;border:1px solid var(--edge);border-radius:6px}
 .catalog-trial table{border-collapse:collapse;width:100%;text-align:left;font-size:11px}
@@ -94,19 +93,12 @@ button:hover{background:#dcebf0}
 </div>
 <label class="check"><input id="section" type="checkbox" checked> Mostrar muro y gabinete en corte</label>
 <label class="check"><input id="ghost" type="checkbox" checked> Gabinete semitransparente</label>
-<label class="check"><input id="guide" type="checkbox" checked> Mostrar eje y recorrido ilustrativo</label>
+<label class="check"><input id="guide" type="checkbox" checked> Resaltar eje de la tapa</label>
 </section>
 <div class="row"><strong>Simulación de entrega</strong><span class="pill" id="state">Cerrado</span></div>
-<div class="delivery-mode">
-<label for="deliveryMode">Modo</label>
-<select id="deliveryMode" aria-controls="physicsPanel animationPanel">
-<option value="animation" selected>Animación ilustrativa</option>
-<option value="physics">Pruebas con física</option>
-</select>
-</div>
-<section id="physicsPanel" aria-labelledby="physicsTitle" hidden>
+<section id="physicsPanel" aria-labelledby="physicsTitle">
 <h2 id="physicsTitle">Prueba con gravedad y colisiones</h2>
-<div class="buttons"><button class="primary" id="physics">Probar caída con física</button><button id="physicsPause" disabled>Pausar prueba</button></div>
+<div class="buttons"><button class="primary" id="physics">Probar caída con física</button><button id="physicsPause" disabled>Pausar prueba</button><button id="physicsReset">Reiniciar prueba</button></div>
 <p class="muted2">Usa las medidas actuales de la caja. La prueba la introduce centrada, la suelta y cierra la tapa a velocidad fija. La fricción usada es 0.35.</p>
 <div class="card" id="physicsStatus" role="status">Lista para probar una caja con el depósito acoplado.</div>
 <h2>Prueba del catálogo Amazon</h2>
@@ -139,11 +131,7 @@ button:hover{background:#dcebf0}
 </div>
 </details>
 </section>
-<section id="animationPanel" aria-labelledby="animationTitle" data-animation-only>
-<h2 id="animationTitle">Animación y movimiento</h2>
-<div class="buttons"><button class="primary" id="play">▶ Reproducir entrega</button><button id="pause">Ⅱ Pausar</button><button id="reset">↺ Reiniciar</button></div>
-</section>
-<div class="buttons" style="margin-top:8px"><button id="open" data-animation-only>Abrir tapa</button><button id="place" data-animation-only>Colocar caja</button><button id="close" data-animation-only>Cerrar y depositar</button><button id="access" aria-expanded="false" aria-controls="accessForm">Abrir puerta interior</button></div>
+<div class="buttons" style="margin-top:8px"><button id="access" aria-expanded="false" aria-controls="accessForm">Abrir puerta interior</button></div>
 <form id="accessForm" class="card access-form" hidden>
 <label for="accessCode"><strong>Cerradura de combinación</strong></label>
 <p class="muted2" id="accessHint">Usa 1234 en la demostración.</p>
@@ -164,18 +152,17 @@ button:hover{background:#dcebf0}
 <h2>Varias entregas · cajas de distintos tamaños</h2>
 <div class="package-panel">
 <div class="row"><strong>Medidas de la siguiente caja</strong><span class="pill">cm</span></div>
-<p class="muted2" style="margin:6px 0">Selecciona una caja del catálogo desplegable o escribe manualmente sus medidas antes de reproducir la siguiente entrega.</p>
+<p class="muted2" style="margin:6px 0">Selecciona una caja del catálogo desplegable o escribe manualmente sus medidas antes de iniciar la prueba de caída.</p>
 <div class="amazon-catalog">
 <label for="amazonBox"><strong>Catálogo de cajas Amazon</strong> <span class="pill" style="float:right">56 formatos</span></label>
 <select id="amazonBox" aria-label="Seleccionar formato de caja Amazon"><option value="">Elegir un código de caja…</option></select>
 <p class="muted2" id="amazonHelp" style="margin:5px 0 0">Medidas exteriores aproximadas; catálogo de referencia, no oficial ni necesariamente vigente en México. Seleccionar una opción rellena las medidas de la siguiente caja.</p>
 </div>
 <div id="packageFields"></div>
-<div class="buttons" style="margin-top:12px"><button class="primary" id="nextDelivery">＋ Preparar otra entrega</button><button id="clearPackages">Vaciar depósito</button></div>
+<div class="buttons" style="margin-top:12px"><button class="primary" id="nextDelivery" disabled>Guardar caja y preparar otra</button><button id="clearPackages">Vaciar depósito</button></div>
 </div>
-<div class="card" id="deliveryStatus" data-animation-only role="status" aria-live="polite" style="margin-top:10px">Selecciona una caja y reproduce la entrega.</div>
+<p class="muted2">Al terminar una caída exitosa puedes guardar la caja en la posición alcanzada para probar otra entrega.</p>
 <div class="card" id="storedStatus" style="margin-top:10px">Depósito vacío · 0 cajas.</div>
-<p class="muted2" data-animation-only>Una entrega rechazada queda visible junto a la abertura y muestra el motivo. Las cajas anteriores permanecen dentro. Puedes modificar estas medidas para cada nueva caja. La colocación es geométrica y aproximada, sin física de impactos.</p>
 <div class="row" style="margin-top:13px"><label for="angle">Apertura de tapa</label><span id="angleText" class="status">0°</span></div><input class="range" type="range" id="angle" min="0" max="90" value="0" step="1">
 <div class="card" id="message" style="margin-top:8px">Observa cómo la tapa exterior y la pestaña interior giran juntas alrededor del mismo eje.</div>
 <div class="divline"></div>
@@ -189,12 +176,12 @@ button:hover{background:#dcebf0}
 <div class="buttons"><button id="save">Guardar medidas (.json)</button><button id="load">Cargar medidas (.json)</button></div>
 <p class="muted2">El JSON conserva las medidas editables para continuar en el simulador.</p></details>
 <input id="loadfile" type="file" accept=".json,application/json" hidden>
-<p class="muted2" style="margin-top:20px">⚠️ La ubicación final y la acumulación de cajas son geométricas y aproximadas; NO constituyen una simulación dinámica de gravedad, choques o fricción. Las comprobaciones verifican límites geométricos básicos y NO garantizan que la caja deslice, caiga o permita el retorno. Antes de fabricar necesitaremos evaluar colisiones 3D, masa, fricción, gravedad, holguras, cargas, seguridad y hacer un prototipo físico. El plano de fabricación queda pendiente.</p>
+<p class="muted2" style="margin-top:20px">Las pruebas modelan gravedad, contacto y fricción. Comprueba holguras, cargas y funcionamiento con un prototipo antes de fabricar.</p>
 </aside><section class="viewport"><div id="canvas"></div><div class="overlay">
 <div class="view-copy"><strong id="viewTitle">Vista exterior</strong> <p id="viewDescription">Arrastra con el mouse para rotar y usa la rueda para acercarte. La tapa está remetida hasta la cara interior del muro.</p></div>
 <span class="corner">Calle (+Z) · Casa (−Z)</span>
 <div id="latchKey" class="detail-key" hidden><b>Verde</b> · leva del depósito <span aria-hidden="true">|</span> <strong style="color:var(--txt)">Acero claro</strong> · receptor del marco y acceso Allen</div>
-</div><div class="footer"><div class="row"><strong id="phase">Tapa cerrada, depósito oculto</strong><span id="clock" class="muted">0.0 / 12.0 s</span></div><input type="range" min="0" max="12" step="0.01" id="timeline" value="0"><div class="legend">El conjunto del muro incluye marco, eje, tapa y pestaña. El depósito con ruedas se retira hacia el interior para separarlo del conjunto fijo.</div></div></section></main>
+</div><div class="footer"><div class="row"><strong id="phase">Tapa cerrada, depósito oculto</strong><span id="clock" class="muted">0.0 s</span></div><div class="legend">El conjunto del muro incluye marco, eje, tapa y pestaña. El depósito con ruedas se retira hacia el interior para separarlo del conjunto fijo.</div></div></section></main>
 <section class="hardware" id="herrajes" aria-labelledby="hardwareTitle">
 <header><div><h2 id="hardwareTitle">Herrajes para comprar</h2><p>Referencias para cotizar las piezas comerciales del buzón. Confirma las medidas de montaje y el envío antes de pedirlas.</p></div><a class="back-link" href="#simulador">Volver al simulador</a></header>
 <div class="hardware-grid">
@@ -266,15 +253,14 @@ const dimGroups=[
 const dimDefs=dimGroups.flatMap(group=>group.fields).filter(field=>field[2]!==null);
 const amazonBoxes=[["0A0",23.5,16.5,5.7],["A1",25.4,17.8,7.6],["A3",25.4,17.8,13.3],["W01",25.4,20.3,16.5],["A0",26,17.8,5.7],["1A1",29.2,21.6,10.8],["A4",30.5,21.6,17.8],["BM2",30.5,24.1,6.3],["Z1",30.5,22.9,10.2],["1A3",31.8,24.8,8.3],["1AE",33,25.4,21],["1A5",34.3,27.9,12.1],["1AC",34.3,28.6,24.8],["1A9",35.6,31.8,24.1],["1A7",36.8,20.3,18.4],["1B2",38.1,30.5,7.6],["Z4",40.6,31.1,15.9],["B0",43.2,27.9,27.9],["1B4",45.1,36.2,21],["1B9",45.7,22.9,17.8],["1BA",48.3,31.1,28.6],["C1",48.3,33,10.2],["C4",48.3,33.7,30.5],["1BB",48.9,37.5,31.1],["2A0",50.8,40.6,17.8],["2A5",50.8,27.9,10.8],["P2",52.7,45.1,39.4],["2A6",53.3,43.2,26.7],["P1",54,38.7,15.9],["1BG",54.6,45.7,13.3],["2BB",55.9,41.9,35.6],["B05",55.9,38.1,12.7],["D4",55.9,45.7,30.5],["S5",56.5,46.4,31.1],["2A7",61,43.8,10.8],["B14",61,45.7,20.3],["P5",65.4,52.7,41.9],["2A8",66,48.3,22.9],["F3",66,48.3,22.2],["P4",66,41.3,18.4],["P9",69.8,57.1,20.3],["B11",71.1,40.6,15.2],["P7",71.1,49.5,21],["3A1",78.7,52.1,26.7],["Q2",86.4,55.9,34.3],["Q3",92.7,26.7,8.3],["Q4",94,50.8,7.6],["Q5",94,76.2,7.6],["Q6",94,73.7,7.6],["U0",101.6,30.5,23.5],["U3",101.6,26.7,9.5],["U5",101.6,50.8,35.6],["J7",102.9,13.3,13.3],["K89",113,25.4,25.4],["J7A",133.3,13.3,13.3],["CB4",147.3,30.5,16.5]];
 const packDefs=[['w','Ancho',5,170],['h','Alto',3,120],['d','Fondo',5,170]];
-const PACKS={small:{w:25,h:15,d:12},medium:{w:40,h:18,d:18},large:{w:60,h:40,d:40}};
-let p={...defaults},pack={...PACKS.medium},theta=0,stage='none',progress=0,accessOpen=false,cut=true,ghost=true,guides=true,time=0,speed=1,playing=false,prev=performance.now();
-let scene,camera,renderer,orbit,root,cabinet,pivot,parcel,access,guideGroup,deliveryGuide,camTween=null,boxCenterZ=0,hingeZ=0,hingeY=0;
+let p={...defaults},pack={w:40,h:18,d:18},theta=0,accessOpen=false,cut=true,ghost=true,guides=true,prev=performance.now();
+let scene,camera,renderer,orbit,root,cabinet,pivot,parcel,access,guideGroup,camTween=null,boxCenterZ=0,hingeZ=0,hingeY=0;
 let cabinetOffset=0,cabinetLocked=true,rollingMeshes=[];
 let currentView='outer',latchParts=[],doorCam;
 let dimensions=[],viewportHeight=0,facadeBounds,sceneGrid;
 const dimensionFormat=new Intl.NumberFormat('es-MX',{maximumFractionDigits:2});
 const dimensionInk=new THREE.LineBasicMaterial({color:0x28776d,transparent:true,opacity:.88,depthTest:false,depthWrite:false});
-let stored=[],deliveryCommitted=false,deliverySlot=null,deliveryBlocked=false,deliveryReason='',deliveryOrientation=0;
+let stored=[];
 const mat={wall:new THREE.MeshStandardMaterial({color:0x8893a1,roughness:1}),
  wallCut:new THREE.MeshStandardMaterial({color:0x8593a2,roughness:1,transparent:true,opacity:.32}),frame:new THREE.MeshStandardMaterial({color:0x222a34,metalness:.68,roughness:.36}),lid:new THREE.MeshStandardMaterial({color:0x323e4b,metalness:.55,roughness:.42,side:THREE.DoubleSide}),tongue:new THREE.MeshStandardMaterial({color:0x7d929f,metalness:.3,roughness:.5,side:THREE.DoubleSide}),box:new THREE.MeshStandardMaterial({color:0x252e39,metalness:.35,roughness:.56,side:THREE.DoubleSide}),inner:new THREE.MeshStandardMaterial({color:0x101923,roughness:.85,side:THREE.DoubleSide}),handle:new THREE.MeshStandardMaterial({color:0xc3d4df,metalness:.83,roughness:.21}),pkg:new THREE.MeshStandardMaterial({color:0xbf813f,roughness:.96}),tape:new THREE.MeshStandardMaterial({color:0xe9d6aa,roughness:.9}),hinge:new THREE.MeshStandardMaterial({color:0xd8a760,metalness:.55,roughness:.34}),ground:new THREE.MeshStandardMaterial({color:0x25303c,roughness:.96}),
  caster:new THREE.MeshStandardMaterial({color:0x9aaab8,metalness:.78,roughness:.3}),
@@ -296,7 +282,7 @@ const facadeMat={
 };
 function meshBox(parent,w,h,d,x,y,z,m,name=''){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.name=name;parent.add(o);return o}
 function cylinder(parent,r,len,x,y,z,m){const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,20),m);o.position.set(x,y,z);o.rotation.z=PI/2;parent.add(o);return o;}
-function addLine(parent,points,color=0x80d5f1){const geo=new THREE.BufferGeometry().setFromPoints(points);const line=new THREE.Line(geo,new THREE.LineDashedMaterial({color,dashSize:5,gapSize:2}));line.computeLineDistances();parent.add(line);return line;}
+
 function makeSceneBackground(){
  const styles=getComputedStyle($('canvas'));
  const background=document.createElement('canvas');
@@ -332,8 +318,6 @@ function initAmazonCatalog(){
   const [code,L,W,H]=found;
   pack={w:W,h:H,d:L};
   for(const key of ['w','h','d'])$('pack_'+key).value=pack[key];
-  deliverySlot=null;deliveryBlocked=false;deliveryCommitted=false;showDeliveryStatus('Caja seleccionada. Pulsa Reproducir entrega para probarla.');
-  document.querySelectorAll('[data-pack]').forEach(b=>b.classList.remove('active'));
   build();
   $('amazonHelp').textContent='Código '+code+' · largo '+L+' cm, ancho '+W+' cm, alto '+H+' cm. Puedes editar estas medidas antes de entregar.';
  });
@@ -374,7 +358,7 @@ function settingsUI(){
   const row=document.createElement('div');row.className='gridfields';
   const l=document.createElement('label');l.textContent=label+' de caja (cm)';l.htmlFor='pack_'+key;
   const n=document.createElement('input');n.id='pack_'+key;n.type='number';n.min=min;n.max=max;n.value=pack[key];
-  n.addEventListener('change',()=>{pack[key]=Math.max(min,Math.min(max,Number(n.value)||pack[key]));n.value=pack[key];deliverySlot=null;deliveryBlocked=false;deliveryCommitted=false;showDeliveryStatus('Medidas actualizadas. Pulsa Reproducir entrega.');$('amazonBox').value='';document.querySelectorAll('[data-pack]').forEach(b=>b.classList.remove('active'));build();});
+  n.addEventListener('change',()=>{pack[key]=Math.max(min,Math.min(max,Number(n.value)||pack[key]));n.value=pack[key];$('amazonBox').value='';build();});
   row.append(l,n);pe.append(row);
  }
 }
@@ -471,7 +455,6 @@ function positionCabinet(){
  cabinet.position.z=-cabinetOffset;
  const turn=-cabinetOffset/(p.wheelD/2);
  for(const mesh of rollingMeshes)mesh.rotation.x=turn;
- deliveryGuide.visible=cabinetOffset===0;
 }
 function updateCabinetControls(){
  const separated=cabinetOffset>0;
@@ -488,7 +471,7 @@ function updateCabinetControls(){
   : cabinetLocked
    ? 'Libera los cierres antes de retirar el depósito.'
    : 'Puedes mover el depósito o fijarlo de nuevo al marco.';
- for(const id of ['play','place','close','nextDelivery','timeline'])$(id).disabled=separated;
+ $('nextDelivery').disabled=separated || !physicsTrial?.done || !physicsTrial.ok || !physicsTrial.storeResult;
 }
 function moveCabinet(offset){
  if(cabinetLocked || offset===cabinetOffset)return;
@@ -992,18 +975,16 @@ function build(){
 
  parcel=new THREE.Group();root.add(parcel);parcel.name='Paquete de prueba';
  meshBox(parcel,pack.w,pack.h,pack.d,0,0,0,mat.pkg,'Paquete');meshBox(parcel,pack.w,.35,2,0,pack.h/2+.2,0,mat.tape,'Cinta');
- // Guides: revolve around hinge and show conceptual fall towards bottom of the opaque deposit.
+ // Optional axle highlight for inspection.
  guideGroup=new THREE.Group();guideGroup.visible=guides && currentView!=='latch';wallAssembly.add(guideGroup);
  cylinder(guideGroup,1.65,hingeWidth,0,hingeY,hingeZ,new THREE.MeshBasicMaterial({color:0x9c601e}));
- const s=packageOnTongue();const target=packageStored();const a=new THREE.Vector3(0,low+pack.h/2+6,front+pack.d/2+18);
- deliveryGuide=addLine(guideGroup,[a,s,new THREE.Vector3(0,low-5,hingeZ-p.tongueL*.55),target],0x177689);
  buildDimensions();
  positionCabinet();
- setAngle(theta);updateParcel();stored.forEach(renderStoredPackage);updateChecks();updateStoredStatus();
+ parcel.visible=false;
+ setAngle(theta);stored.forEach(renderStoredPackage);updateChecks();updateStoredStatus();
  if(physicsTrial)drawPhysicsTrial();
 }
 function setAngle(a){theta=Math.max(0,Math.min(90,a));if(pivot)pivot.rotation.x=theta*PI/180;$('angle').value=theta;$('angleText').textContent=Math.round(theta)+'°';}
-function packageOnTongue(){const location=Math.min(p.tongueL*.55,Math.max(pack.d/2+3,8));const local=new THREE.Vector3(0,-location,-pack.h/2-.9);local.applyAxisAngle(new THREE.Vector3(1,0,0),theta*PI/180);return local.add(new THREE.Vector3(0,hingeY,hingeZ));}
 function insideLimits(){
  const margin=3;
  return {xmin:-p.boxW/2+margin,xmax:p.boxW/2-margin,
@@ -1038,65 +1019,33 @@ function findStorageSlot(size){
  candidates.sort((a,b)=>a.y-b.y||a.z-b.z||Math.abs(a.x)-Math.abs(b.x)||a.rotationY-b.rotationY);
  return candidates[0]||null;
 }
-function explainRejection(){
- const b=insideLimits(),w=(b.xmax-b.xmin).toFixed(1),d=(b.zmax-b.zmin).toFixed(1);
- const options=[[pack.w,pack.d],[pack.d,pack.w]];
- const anyFit=options.some(([ww,dd])=>ww<=+w&&dd<=+d&&pack.h<=b.top-b.floor);
- if(!anyFit)return `No cabe con las orientaciones horizontales permitidas. Caja: ${pack.w} × ${pack.h} × ${pack.d} cm (ancho × alto × fondo). Espacio libre aproximado: ${w} × ${(b.top-b.floor).toFixed(1)} × ${d} cm. Prueba aumentar la profundidad del depósito o disminuir la caja.`;
- return 'El paquete cabe por dimensiones generales, pero no hay una posición libre compatible con las cajas ya almacenadas. Vacía el depósito o modifica sus dimensiones.';
-}
-function showDeliveryStatus(message,failed=false){
- const el=$('deliveryStatus');
- el.style.borderLeftColor=failed?'#c98731':'#269b89';
- el.innerHTML=cabinetOffset>0?'Depósito retirado. Acércalo al muro para recibir una caja.':message;
-}
-function packageStored(){return deliverySlot?new THREE.Vector3(deliverySlot.x,deliverySlot.y,deliverySlot.z):new THREE.Vector3(0,p.boxFloor+pack.h/2+2,boxCenterZ);}
 function renderStoredPackage(b,i){
  const item=new THREE.Group();cabinet.add(item);item.name='Entrega almacenada '+(i+1);
  const m=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL((.085+i*.075)%1,.36,.48),roughness:.93});
  meshBox(item,b.w,b.h,b.d,0,0,0,m,'Caja '+(i+1));
  meshBox(item,b.w,.25,1.5,0,b.h/2+.14,0,mat.tape,'Cinta');
  item.position.set(b.x,b.y,b.z);
+ if(b.q)item.quaternion.fromArray(b.q);
 }
 function updateStoredStatus(){
  const volume=p.boxW*p.boxD*p.boxH;
  const used=stored.reduce((n,a)=>n+a.w*a.h*a.d,0);
  $('storedStatus').innerHTML='<b>'+stored.length+' caja(s) depositada(s)</b> · '+(volume?Math.round(100*used/volume):0)+'% del volumen nominal ocupado.<br>'+
  stored.map((a,i)=>'Caja '+(i+1)+': '+a.w+' × '+a.h+' × '+a.d+' cm').join('<br>')+
- '<br><span class="tiny">La ocupación volumétrica no demuestra que todas puedan llegar a estas posiciones por caída real.</span>';
+ '<br><span class="tiny">Volumen estimado a partir de las medidas de las cajas guardadas.</span>';
 }
 function refreshGeometry(){
- // Existing packages keep their sizes; if dimensions changed, recalculate their placement.
- const previous=stored.map(a=>a.original||({w:a.w,h:a.h,d:a.d}));
- syncCabinetDimensions();
+ const removed=stored.length;
  stored=[];
- for(const size of previous){const slot=findStorageSlot(size);if(slot)stored.push(slot);}
+ syncCabinetDimensions();
  prepareNext();
  build();
- const removed=previous.length-stored.length;
  $('message').textContent=removed
-  ? 'Medidas actualizadas. Cajas retiradas por falta de espacio: '+removed+'.'
+  ? 'Medidas actualizadas. El depósito se vació para probar la nueva configuración.'
   : 'Medidas actualizadas. El depósito se ajustó a la abertura y a las ruedas.';
  frameFocusedView();
 }
 const smooth=n=>{n=Math.max(0,Math.min(1,n));return n*n*(3-2*n)};
-function positionApproach(){return new THREE.Vector3(0,hingeY+pack.h/2+15,p.wallD/2+pack.d/2+20)};
-function updateParcel(){if(!parcel)return;parcel.visible=stage!=='none'&&stage!=='removed';const on=packageOnTongue(),ground=packageStored(),approach=positionApproach();let pos=on,rotation=0;
- if(deliveryBlocked && (stage==='fall'||stage==='stored'||stage==='pickup'||stage==='blocked')){
-   parcel.visible=true;
-   parcel.position.copy(positionApproach());parcel.rotation.set(0,0,0);
-   return;
- }
- if(stage==='approach')pos=approach.clone().lerp(on,smooth(progress));
- else if(stage==='supported'){pos=on;rotation=0;}
- else if(stage==='fall'){const a=smooth(progress);const z=on.z+(ground.z-on.z)*a;const y=on.y+(ground.y-on.y)*a;pos=new THREE.Vector3(0,y,z);}
- else if(stage==='stored'||stage==='pickup')pos=ground;
- else if(stage==='removed')pos=approach;
- parcel.position.copy(pos);parcel.rotation.set(rotation,0,(deliverySlot&&stage==='fall'&&progress>0.5)?0:0);
- if(deliverySlot&&(stage==='fall'||stage==='stored'||stage==='pickup'))parcel.rotation.y=THREE.MathUtils.degToRad(deliverySlot.rotationY||0);
- else parcel.rotation.y=0;
-}
-function setStage(value,t=0){stage=value;progress=t;updateParcel();$('state').textContent=({none:'Vacío',approach:'Introduciendo',supported:'Sobre pestaña',fall:'Caída ilustrativa',stored:'Depositado',pickup:'Recogida',blocked:'No cabe',removed:'Retirado'})[value]||value;}
 function updateChecks(){const risks=[];const hasOpening=pack.w<p.openingW-2*p.gap-2&&pack.h<p.openingH-2*p.gap-2;const canSupport=pack.d<p.tongueL-3 && pack.w<tongueWidth()-3;const fitsCabinet=pack.w<p.boxW-4&&pack.d<p.boxD-5&&pack.h<p.boxH-5;const wallHeight=p.entryY, cabinetH=p.boxH;
  if(!hasOpening)risks.push('La caja podría NO pasar por la abertura de entrada.');
  if(!canSupport)risks.push('La caja supera el ancho o la longitud de apoyo nominal de la pestaña interior.');
@@ -1106,68 +1055,16 @@ function updateChecks(){const risks=[];const hasOpening=pack.w<p.openingW-2*p.ga
  if(p.entryY-p.boxFloor<pack.h+10)risks.push('Hay poca altura libre debajo del eje para este paquete.');
  $('checks').innerHTML=`<strong class="${risks.length?'bad':'ok'}">${risks.length?'⚠ Atención geométrica':'✓ Límites básicos compatibles'}</strong><br>`+(risks.length?risks.map(s=>'• '+s).join('<br>'):'La abertura y el depósito admiten las dimensiones nominales seleccionadas.')+`<br><span class="tiny">Altura útil aproximada: ${cabinetH.toFixed(1)} cm · Entrada a ${wallHeight.toFixed(1)} cm del suelo. No es una prueba de caída ni de bloqueo del giro.</span>`;
 }
-function ensureSlot(){
- if(cabinetOffset>0)return false;
- if(!deliverySlot&&!deliveryBlocked)deliverySlot=findStorageSlot(pack);
- if(!deliverySlot){
-  deliveryBlocked=true;deliveryReason=explainRejection();
-  showDeliveryStatus('<b>⚠ Entrega no aceptada</b><br>'+deliveryReason,true);
-  return false;
- }
- deliveryOrientation=deliverySlot.rotationY||0;
- showDeliveryStatus('<b>✓ Destino geométrico encontrado</b> · '+(deliveryOrientation?'Orientación girada 90° para aprovechar el fondo. ':'')+'<br>La caída es ilustrativa y todavía no verifica fricción o choques.');
- return true;
-}
-function commitDelivery(){
- if(deliveryCommitted||deliveryBlocked)return;
- if(!ensureSlot())return;
- stored.push({...deliverySlot});
- deliveryCommitted=true;
- showDeliveryStatus('<b>✓ Caja depositada en el modelo</b> · '+(deliveryOrientation?'Rotada 90° en la base. ':'')+'Puedes preparar otra entrega. La trayectoria aún no está validada físicamente.');
- parcel.visible=false;
- renderStoredPackage(stored.at(-1),stored.length-1);
- updateStoredStatus();
-}
 function prepareNext(keepAngle=false){
  stopPhysicsTrial();
- playing=false;
- deliverySlot=null;deliveryCommitted=false;deliveryBlocked=false;deliveryReason='';
- const angle=theta;
- setTime(0);
- if(keepAngle)setAngle(angle);
+ if(!keepAngle)setAngle(0);
  const separated=cabinetOffset>0;
- if(separated)$('phase').textContent='Depósito separado del muro';
- showDeliveryStatus('Lista para una nueva entrega. Selecciona caja y pulsa Reproducir entrega.');
+ $('phase').textContent=separated?'Depósito separado del muro':'Tapa cerrada';
  $('message').textContent=separated
   ? 'El depósito se mueve sobre ruedas. El marco y su mecanismo quedan fijos en el muro.'
-  : 'Nueva entrega preparada. Modifica ancho, alto y fondo de la caja si lo deseas y pulsa «Reproducir entrega».';
+  : 'Selecciona o mide una caja y pulsa «Probar caída con física».';
 }
-function setTime(t){time=Math.max(0,Math.min(12,t));let a=0,which='none',mix=0,desc='Tapa cerrada · pestaña vertical dentro del depósito';
- if(time<2.5){a=90*smooth(time/2.5);desc='La tapa exterior baja y se apoya sobre el canto; la pestaña sube horizontalmente';}
- else if(time<4.5){a=90;which='approach';mix=(time-2.5)/2;desc='La caja entra y se coloca sobre la pestaña interior';}
- else if(time<5.5){a=90;which='supported';desc='La caja queda sostenida por la pestaña, una pieza con la tapa exterior';}
- else if(time<8.4){a=90*(1-smooth((time-5.5)/2.9));which='fall';mix=smooth((time-5.5)/2.9);desc='Cierre de tapa y caída ilustrativa de la caja dentro del depósito';}
- else if(time<10.5){which='stored';desc='El paquete queda oculto en el depósito cerrado';}
- else {which='pickup';desc='Recogida desde el interior (abrir puerta manualmente)';}
- setAngle(a);
- if(time>=5.5 && !deliveryCommitted && !deliveryBlocked)ensureSlot();
- if(deliveryBlocked && time>=5.5){which='blocked';desc='Entrega rechazada: '+deliveryReason;playing=false;}
- setStage(which,mix);
- if(time>=8.4)commitDelivery();
- if(deliveryCommitted && parcel)parcel.visible=false;
- $('timeline').value=time;$('clock').textContent=time.toFixed(1)+' / 12.0 s';$('phase').textContent=desc;
-}
-let physicsTrial=null,physicsLoading=false,modeRevision=0,catalogAttempt=null;
-const isPhysicsMode=()=>$('deliveryMode').value==='physics';
-function updateDeliveryMode(){
- modeRevision++;
- const physics=isPhysicsMode();
- $('physicsPanel').hidden=!physics;
- document.querySelectorAll('[data-animation-only]').forEach(control=>{control.hidden=physics;});
- if(!physics)catalogAttempt?.abort();
- if(playing || physicsTrial || time!==0 || stage!=='none' || theta!==0)prepareNext();
- else setTime(0);
-}
+let physicsTrial=null,physicsLoading=false,trialRevision=0,catalogRunning=false;
 let physicsEnginePromise;
 function loadPhysicsEngine(){
  if(!physicsEnginePromise){
@@ -1203,7 +1100,10 @@ function capturePhysicalSetup(empty=false){
  for(const mesh of pivot.parent.children)if(mesh!==pivot && mesh!==guideGroup)capture(mesh);
  for(const mesh of cabinet.children)if(mesh.isMesh)capture(mesh);
  capture(access.getObjectByName('Puerta interior opaca'));
- if(!empty)for(const item of stored)box('Caja depositada',[item.w,item.h,item.d],item.x,item.y,item.z);
+ if(!empty)for(const {w,h,d,x,y,z,q} of stored){
+  const rotation=q?new THREE.Quaternion().fromArray(q):undefined;
+  fixed.push(['Caja depositada',[w,h,d],new THREE.Vector3(x,y,z),rotation]);
+ }
  for(const mesh of pivot.children)capture(mesh,true);
  return {config:{...p},hingeY,hingeZ,fixed,moving};
 }
@@ -1317,21 +1217,24 @@ function physicalTrace(R,size=pack,setup=capturePhysicalSetup(),recordFrames=tru
 }
 
 function stopPhysicsTrial(){
- if(!physicsTrial)return;
+ trialRevision++;
  physicsTrial=null;
- parcel.visible=false;
- deliveryGuide.visible=cabinetOffset===0;
- $('timeline').disabled=cabinetOffset>0;
+ if(parcel)parcel.visible=false;
+ $('nextDelivery').disabled=true;
  $('physicsPause').disabled=true;
  $('physicsPause').textContent='Pausar prueba';
- $('clock').textContent=time.toFixed(1)+' / 12.0 s';
- $('physicsStatus').textContent='Prueba reiniciada. Usa las medidas actuales de la caja para repetirla.';
+ $('clock').textContent='0.0 s';
+ $('state').textContent='Lista';
+ $('phase').textContent='Prueba lista';
+ $('physicsStatus').style.borderLeftColor='';
+ $('physicsStatus').textContent=cabinetOffset>0
+  ? 'Acerca el depósito al muro para probar una caída.'
+  : 'Lista para probar una caja con el depósito acoplado.';
 }
 function drawPhysicsTrial(){
  const frame=physicsTrial.frames[Math.floor(physicsTrial.cursor)];
  if(!frame)return;
  setAngle(frame.angle);
- deliveryGuide.visible=false;
  parcel.visible=true;
  parcel.position.copy(frame.p);
  parcel.quaternion.copy(frame.q);
@@ -1352,30 +1255,29 @@ function advancePhysicsTrial(dt){
   return;
  }
  trial.done=true;
+ $('nextDelivery').disabled=!trial.ok || !trial.storeResult;
  $('physicsPause').disabled=true;
  $('phase').textContent=trial.outcome;
  $('state').textContent=trial.outcome;
  $('physicsStatus').textContent=trial.outcome+'. '+trial.detail;
  $('physicsStatus').style.borderLeftColor=trial.ok?'#269b89':'#c98731';
 }
-async function startPhysicsTrial(){
- if(!isPhysicsMode() || physicsLoading)return;
- const revision=modeRevision;
+async function startPhysicsTrial(storeResult=true){
+ if(physicsLoading)return;
+ const revision=trialRevision;
  if(cabinetOffset>0){$('physicsStatus').textContent='Acerca el depósito al muro antes de probar la caída.';return;}
  physicsLoading=true;
  $('physics').disabled=true;
  $('physicsStatus').textContent='Preparando la prueba de caída…';
  try{
   const engine=await loadPhysicsEngine();
-  if(revision!==modeRevision)return;
+  if(revision!==trialRevision)return;
   if(cabinetOffset>0){$('physicsStatus').textContent='Acerca el depósito al muro antes de probar la caída.';return;}
-  stopPhysicsTrial();
   prepareNext();
   setAccessOpen(false);
   selectView('cut');
   const result=physicalTrace(engine);
-  physicsTrial={...result,cursor:0,done:false,paused:false};
-  $('timeline').disabled=true;
+  physicsTrial={...result,size:{...pack},storeResult,cursor:0,done:false,paused:false};
   $('physicsPause').disabled=false;
   $('state').textContent='Prueba de caída';
   $('physicsStatus').style.borderLeftColor='#269b89';
@@ -1447,7 +1349,6 @@ function filterCatalogRows(){
 function applyCatalogPreset(){
  const preset=catalogPresets.find(item=>item.id===$('catalogPreset').value);
  if(!preset)return;
- modeRevision++;
  Object.assign(p,defaults,preset.dimensions);
  for(const [key] of dimDefs)$('p_'+key).value=p[key];
  refreshGeometry();
@@ -1469,7 +1370,7 @@ function applyCatalogPreset(){
 function markCatalogConfigurationChanged(){
  if(!catalogRun || catalogRun.configKey===JSON.stringify(p))return;
  $('catalogPreset').value='';
- if(!catalogAttempt)$('physicsCatalogStatus').textContent='Las medidas cambiaron. La tabla sigue mostrando la configuración anterior hasta que repitas la prueba.';
+ if(!catalogRunning)$('physicsCatalogStatus').textContent='Las medidas cambiaron. La tabla sigue mostrando la configuración anterior hasta que repitas la prueba.';
 }
 const yieldCatalogFrame=()=>new Promise(requestAnimationFrame);
 function trialResult(result){
@@ -1534,7 +1435,7 @@ function renderCatalogRun(run,previous){
     if(index)$('amazonHelp').textContent='Caja '+row.code+' girada 90° para la prueba de caída.';
     for(const key of ['w','h','d'])$('pack_'+key).value=pack[key];
     build();
-    startPhysicsTrial();
+    startPhysicsTrial(false);
     if(window.matchMedia('(max-width:860px)').matches)$('simulador').scrollIntoView({block:'start'});
    };
    cell.append(replay);
@@ -1548,7 +1449,7 @@ function renderCatalogRun(run,previous){
  output.open=true;
 }
 async function testPhysicsCatalog(){
- if(!isPhysicsMode() || physicsLoading || $('physicsCatalog').disabled)return;
+ if(physicsLoading || catalogRunning)return;
  const status=$('physicsCatalogStatus');
  if(cabinetOffset>0 || accessOpen){
   status.textContent='Acerca el depósito al muro y cierra la puerta de recogida antes de probar el catálogo.';
@@ -1557,17 +1458,14 @@ async function testPhysicsCatalog(){
  const setup=capturePhysicalSetup(true);
  const run={config:setup.config,configKey:JSON.stringify(setup.config),rows:[]};
  const button=$('physicsCatalog'),presets=$('catalogPreset');
- const attempt=new AbortController();
- catalogAttempt=attempt;
+ catalogRunning=true;
  button.disabled=true;
  presets.disabled=true;
  try{
   const engine=await loadPhysicsEngine();
-  if(attempt.signal.aborted)return;
   for(const [code,length,width,height] of amazonBoxes){
    status.textContent=`Probando ${run.rows.length+1} de ${amazonBoxes.length}: ${code}…`;
    await yieldCatalogFrame();
-   if(attempt.signal.aborted)return;
    const sizes=catalogSizes(length,width,height);
    const normal=physicalTrace(engine,sizes[0],setup,false);
    const turned=width===length?normal:physicalTrace(engine,sizes[1],setup,false);
@@ -1581,12 +1479,11 @@ async function testPhysicsCatalog(){
    : 'Prueba completa con las medidas que tenía el buzón al comenzar.';
  }catch(error){
   console.error(error);
-  if(!attempt.signal.aborted)status.textContent='No se pudo completar la prueba del catálogo. Vuelve a intentarlo.';
+  status.textContent='No se pudo completar la prueba del catálogo. Vuelve a intentarlo.';
  }finally{
-  catalogAttempt=null;
+  catalogRunning=false;
   button.disabled=false;
   presets.disabled=false;
-  if(attempt.signal.aborted)status.textContent='Prueba del catálogo detenida al cambiar de modo.';
  }
 }
 
@@ -1621,17 +1518,16 @@ function selectView(key){
  }
 }
 function buttonControls(){
- $('deliveryMode').onchange=updateDeliveryMode;
- $('physics').onclick=startPhysicsTrial;
+ $('physics').onclick=()=>startPhysicsTrial();
+ $('physicsReset').onclick=()=>prepareNext();
  $('physicsCatalog').onclick=testPhysicsCatalog;
  $('physicsPause').onclick=()=>{
   if(!physicsTrial || physicsTrial.done)return;
   physicsTrial.paused=!physicsTrial.paused;
   $('physicsPause').textContent=physicsTrial.paused?'Continuar prueba':'Pausar prueba';
  };
- const legacyControls='#open,#place,#close,#play,#reset,#nextDelivery,#clearPackages,#access,#dock,#rollBack';
- document.addEventListener('click',event=>{if(event.target.closest(legacyControls))stopPhysicsTrial();},true);
- document.addEventListener('input',event=>{if(event.target.matches('#angle,#timeline,#cabinetOffset,#packageFields input'))stopPhysicsTrial();},true);
+ document.addEventListener('click',event=>{if(event.target.closest('#access'))stopPhysicsTrial();},true);
+ document.addEventListener('input',event=>{if(event.target.matches('#angle,#packageFields input'))stopPhysicsTrial();},true);
  document.addEventListener('change',event=>{if(event.target.matches('#amazonBox'))stopPhysicsTrial();},true);
  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>selectView(b.dataset.view==='latch' && currentView==='latch'?'cut':b.dataset.view));
  $('latchToggle').onclick=()=>{
@@ -1652,9 +1548,6 @@ function buttonControls(){
  $('rollBack').onclick=()=>moveCabinet(60);
  $('dock').onclick=()=>moveCabinet(0);
  $('section').onchange=e=>{cut=e.target.checked;build();};$('ghost').onchange=e=>{ghost=e.target.checked;build();};$('guide').onchange=e=>{guides=e.target.checked;guideGroup.visible=guides && currentView!=='latch';};
- $('open').onclick=()=>{playing=false;setAngle(90);setStage('none');$('message').textContent='Tapa exterior horizontal sobre el canto; pestaña interior solidaria. Puedes editar el largo y el espesor. El ancho de la pestaña sigue al de la abertura.';};
- $('place').onclick=()=>{playing=false;setAngle(90);setStage('supported');$('message').textContent='Caja colocada sobre la pestaña interior. Para verificar una caja grande, inspecciona también la vista de corte lateral.';};
- $('close').onclick=()=>{playing=false;ensureSlot();setAngle(0);setStage('stored');commitDelivery();$('message').textContent='Caja mostrada dentro del depósito. El movimiento es ilustrativo, no una caída comprobada por física.';};
  $('catalogLatch').onclick=()=>{
   selectView('latch');
   $('simulador').scrollIntoView({block:'start'});
@@ -1681,16 +1574,32 @@ function buttonControls(){
   $('message').textContent='Combinación correcta. Puerta interior desbloqueada y abierta.';
  };
  $('accessCode').oninput=()=>$('accessError').hidden=true;
- $('angle').oninput=e=>{playing=false;setAngle(+e.target.value);updateParcel();};
- $('play').onclick=()=>{if(deliveryCommitted)prepareNext();if(time>=11.99)setTime(0);playing=true;setAccessOpen(false);$('message').textContent='Secuencia ilustrativa: abrir tapa, apoyar paquete sobre pestaña, cerrar y depositar dentro de gabinete.';};
- $('nextDelivery').onclick=()=>prepareNext();
+ $('angle').oninput=e=>setAngle(+e.target.value);
+ $('nextDelivery').onclick=()=>{
+  const trial=physicsTrial;
+  if(!trial?.done || !trial.ok || !trial.storeResult)return;
+  const {p:position,q}=trial.frames.at(-1);
+  stored.push({...trial.size,x:position.x,y:position.y,z:position.z,q:q.toArray()});
+  prepareNext();
+  renderStoredPackage(stored.at(-1),stored.length-1);
+  updateStoredStatus();
+ };
  $('clearPackages').onclick=()=>{stored=[];prepareNext();build();$('message').textContent='Depósito vaciado; ya puedes probar una secuencia nueva.';};
- $('pause').onclick=()=>playing=false;$('reset').onclick=()=>{playing=false;setAccessOpen(false);prepareNext();};$('timeline').oninput=e=>{playing=false;setTime(+e.target.value);}; document.querySelectorAll('[data-pack]').forEach(b=>b.onclick=()=>{pack={...PACKS[b.dataset.pack]};$('amazonBox').value='';for(const key of ['w','h','d'])$('pack_'+key).value=pack[key];document.querySelectorAll('[data-pack]').forEach(x=>x.classList.toggle('active',x===b));deliverySlot=null;deliveryBlocked=false;build();});
- $('save').onclick=()=>download(JSON.stringify({format:'buzon-3d-v13',units:'cm',dimensions:p,package:pack,cabinetOffset,cabinetLocked,storedPackages:stored.map(a=>a.original||({w:a.w,h:a.h,d:a.d})),technicalStatus:'conceptual, no validated physical collision'},null,2),'buzon-medidas-v13.json','application/json');
+ $('save').onclick=()=>download(JSON.stringify({format:'buzon-3d-v13',units:'cm',dimensions:p,package:pack,cabinetOffset,cabinetLocked,storedPackages:stored.map(a=>a.q?a:a.original),technicalStatus:'simulación de caída, prototipo pendiente'},null,2),'buzon-medidas-v13.json','application/json');
  $('load').onclick=()=>$('loadfile').click();$('loadfile').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());
  for(const [key,,min,max]of dimDefs){if(Number.isFinite(j.dimensions?.[key]))p[key]=Math.max(min,Math.min(max,j.dimensions[key]));$('p_'+key).value=p[key];}for(const [key,,min,max]of packDefs){if(Number.isFinite(j.package?.[key]))pack[key]=Math.max(min,Math.min(max,j.package[key]));$('pack_'+key).value=pack[key];}
  syncCabinetDimensions();
- stored=[];for(const size of j.storedPackages||[]){if(['w','h','d'].every(k=>Number.isFinite(size[k])&&size[k]>0)){const slot=findStorageSlot(size);if(slot)stored.push(slot);}}
+ stored=[];
+ for(const size of Array.isArray(j.storedPackages)?j.storedPackages:[]){
+  if(!size || !['w','h','d'].every(k=>Number.isFinite(size[k])&&size[k]>0))continue;
+  if(['x','y','z'].every(k=>Number.isFinite(size[k])) && Array.isArray(size.q) && size.q.length===4 && size.q.every(Number.isFinite)){
+   const {w,h,d,x,y,z,q}=size;
+   stored.push({w,h,d,x,y,z,q:new THREE.Quaternion().fromArray(q).normalize().toArray()});
+  }else{
+   const slot=findStorageSlot(size);
+   if(slot)stored.push(slot);
+  }
+ }
  const offset=$('cabinetOffset');
  cabinetOffset=Number.isFinite(j.cabinetOffset)?Math.max(0,Math.min(+offset.max,Math.round(j.cabinetOffset))):0;
  cabinetLocked=cabinetOffset===0 && j.cabinetLocked!==false;
@@ -1938,6 +1847,6 @@ function downloadPlanImage(measures,views){
 }
 function download(text,name,type){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
 function resize(){const el=$('canvas');const w=el.clientWidth,h=el.clientHeight;if(w<1||h<1)return;viewportHeight=h;camera.aspect=w/h;camera.fov=w<480?51:44;camera.updateProjectionMatrix();renderer.setSize(w,h);buildDimensions();frameFocusedView();}
-init();settingsUI();syncCabinetDimensions();initAmazonCatalog();initCatalogPresets();buttonControls();updateCabinetControls();build();updateDeliveryMode();resize();window.addEventListener('resize',resize);
-function animate(now){requestAnimationFrame(animate);const dt=Math.min(.06,(now-prev)/1000);prev=now;advancePhysicsTrial(dt);if(playing){setTime(time+dt*speed);if(time>=12)playing=false;}if(camTween){const u=Math.min(1,(now-camTween.start)/600);camera.position.lerpVectors(camTween.from,camTween.to,smooth(u));if(u>=1)camTween=null;}orbit.update();renderScene();}requestAnimationFrame(animate);
+init();settingsUI();syncCabinetDimensions();initAmazonCatalog();initCatalogPresets();buttonControls();updateCabinetControls();build();prepareNext();resize();window.addEventListener('resize',resize);
+function animate(now){requestAnimationFrame(animate);const dt=Math.min(.06,(now-prev)/1000);prev=now;advancePhysicsTrial(dt);if(camTween){const u=Math.min(1,(now-camTween.start)/600);camera.position.lerpVectors(camTween.from,camTween.to,smooth(u));if(u>=1)camTween=null;}orbit.update();renderScene();}requestAnimationFrame(animate);
 </script></body></html>
