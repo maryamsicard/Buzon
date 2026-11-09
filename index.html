@@ -176,16 +176,21 @@ button:hover{background:#dcebf0}
 <div><dt>Altura total con ruedas</dt><dd id="overviewTotal"></dd></div>
 </dl>
 <p id="deliveryCoverage" role="status">Preparando resultados del catálogo…</p>
-<p class="muted2">Prueba simulada con el depósito vacío y acoplado. La caja se coloca centrada junto al eje.</p>
+<p class="muted2">Prueba simulada con el depósito vacío y acoplado. El paquete se coloca centrado junto al eje.</p>
 </section>
 <div class="row"><strong>Simulación de entrega</strong><span class="pill" id="state">Cerrado</span></div>
 <section id="physicsPanel" aria-labelledby="physicsTitle">
-<h2 id="physicsTitle">Elige la caja</h2>
+<h2 id="physicsTitle">Elige una caja o un sobre</h2>
 <div class="amazon-catalog">
-<label for="amazonBox"><strong>Caja a entregar</strong></label>
-<select id="amazonBox" aria-describedby="packageFit"><option value="">Elegir una caja…</option><option value="manual">Medidas personalizadas</option></select>
+<label for="amazonBox"><strong>Paquete a entregar</strong></label>
+<select id="amazonBox" aria-describedby="packageFit"><option value="">Elegir un paquete…</option><option value="manual">Medidas personalizadas</option></select>
 <div id="packageFields" hidden></div>
-<p id="packageFit" class="muted2" role="status">Selecciona un formato de Amazon o escribe las medidas de tu caja.</p>
+<p id="packageFit" class="muted2" role="status">Selecciona una caja o un sobre de Amazon, o escribe las medidas de tu paquete.</p>
+<details class="catalog-trial">
+<summary>Medidas de referencia de los sobres</summary>
+<p class="muted2">La simulación trata los sobres como paquetes rígidos. Los formatos medidos por lectores se prueban con 2 cm de grosor de referencia. Si tu sobre lleno tiene otro grosor, elige «Medidas personalizadas».</p>
+<p class="muted2"><a href="https://incompetech.com/gallimaufry/amazonboxes.html" target="_blank" rel="noopener">Catálogo independiente de sobres</a> · <a href="https://sellercentral.amazon.com.mx/help/hub/reference/external/G201411300" target="_blank" rel="noopener">Medida máxima de sobre de Amazon México</a></p>
+</details>
 </div>
 <div class="buttons"><button class="primary" id="physics" disabled>Entregar paquete</button><button id="clearPackages">Vaciar buzón</button></div>
 <p class="muted2">Los paquetes entregados se acumulan en el depósito. Usa «Vaciar buzón» para empezar de nuevo.</p>
@@ -193,15 +198,15 @@ button:hover{background:#dcebf0}
 </section>
 <details class="catalog-trial">
 <summary>Comprobar todo el catálogo</summary>
-<div class="buttons"><button id="physicsCatalog">Probar las 56 cajas</button></div>
-<p class="muted2">Cada caja se prueba por separado con el depósito vacío. En la entrega individual también se consideran las cajas que hayas guardado.</p>
+<div class="buttons"><button id="physicsCatalog">Probar cajas y sobres</button></div>
+<p class="muted2">Cada paquete se prueba por separado con el depósito vacío. En la entrega individual también se consideran los paquetes que hayas guardado.</p>
 <p id="physicsCatalogStatus" class="muted2" role="status"></p>
 <details id="physicsCatalogResults" class="catalog-trial" hidden>
 <summary id="physicsCatalogSummary">Resultados</summary>
 <p id="physicsCatalogConfig" class="muted2"></p>
-<label class="check"><input type="checkbox" id="physicsCatalogAccepted"> Mostrar solo las cajas que caen</label>
-<div class="catalog-trial-scroll" role="region" aria-label="Resultados de caída por caja" tabindex="0">
-<table><thead><tr><th scope="col">Caja · cm</th><th scope="col">Resultado</th></tr></thead><tbody id="physicsCatalogRows"></tbody></table>
+<label class="check"><input type="checkbox" id="physicsCatalogAccepted"> Mostrar solo los paquetes que caen</label>
+<div class="catalog-trial-scroll" role="region" aria-label="Resultados de caída por paquete" tabindex="0">
+<table><thead><tr><th scope="col">Paquete · cm</th><th scope="col">Resultado</th></tr></thead><tbody id="physicsCatalogRows"></tbody></table>
 </div>
 </details>
 </details>
@@ -313,7 +318,22 @@ const dimGroups=[
 ];
 const dimDefs=dimGroups.flatMap(group=>group.fields).filter(field=>field[2]!==null);
 const amazonBoxes=[["0A0",23.5,16.5,5.7],["A1",25.4,17.8,7.6],["A3",25.4,17.8,13.3],["W01",25.4,20.3,16.5],["A0",26,17.8,5.7],["1A1",29.2,21.6,10.8],["A4",30.5,21.6,17.8],["BM2",30.5,24.1,6.3],["Z1",30.5,22.9,10.2],["1A3",31.8,24.8,8.3],["1AE",33,25.4,21],["1A5",34.3,27.9,12.1],["1AC",34.3,28.6,24.8],["1A9",35.6,31.8,24.1],["1A7",36.8,20.3,18.4],["1B2",38.1,30.5,7.6],["Z4",40.6,31.1,15.9],["B0",43.2,27.9,27.9],["1B4",45.1,36.2,21],["1B9",45.7,22.9,17.8],["1BA",48.3,31.1,28.6],["C1",48.3,33,10.2],["C4",48.3,33.7,30.5],["1BB",48.9,37.5,31.1],["2A0",50.8,40.6,17.8],["2A5",50.8,27.9,10.8],["P2",52.7,45.1,39.4],["2A6",53.3,43.2,26.7],["P1",54,38.7,15.9],["1BG",54.6,45.7,13.3],["2BB",55.9,41.9,35.6],["B05",55.9,38.1,12.7],["D4",55.9,45.7,30.5],["S5",56.5,46.4,31.1],["2A7",61,43.8,10.8],["B14",61,45.7,20.3],["P5",65.4,52.7,41.9],["2A8",66,48.3,22.9],["F3",66,48.3,22.2],["P4",66,41.3,18.4],["P9",69.8,57.1,20.3],["B11",71.1,40.6,15.2],["P7",71.1,49.5,21],["3A1",78.7,52.1,26.7],["Q2",86.4,55.9,34.3],["Q3",92.7,26.7,8.3],["Q4",94,50.8,7.6],["Q5",94,76.2,7.6],["Q6",94,73.7,7.6],["U0",101.6,30.5,23.5],["U3",101.6,26.7,9.5],["U5",101.6,50.8,35.6],["J7",102.9,13.3,13.3],["K89",113,25.4,25.4],["J7A",133.3,13.3,13.3],["CB4",147.3,30.5,16.5]];
-const packDefs=[['w','Ancho',5,170],['h','Alto',3,120],['d','Fondo',5,170]];
+const amazonEnvelopes=[
+ ['Sobre JM2',27.9,22.9,2],
+ ['Sobre M2',30.5,24.1,2],
+ ['Sobre BK1',33,25.4,2],
+ ['Sobre Burbuja 10 × 13 pulgadas',33,25.4,2],
+ ['Sobre Burbuja 12 × 13.5 pulgadas',34.3,30.5,2],
+ ['Sobre BA8',38.1,26.7,2],
+ ['Sobre JM8',38.1,27.9,2],
+ ['Sobre México (máximo FBA)',38,27,2],
+ ['Sobre EM8',38.1,30.5,2],
+ ['Sobre PM2',39.4,30.5,2],
+ ['Sobre M9',45.7,34.3,2],
+ ['Sobre PM4',61,45.7,2]
+];
+const amazonPackages=[...amazonBoxes,...amazonEnvelopes];
+const packDefs=[['w','Ancho',5,170],['h','Alto',.5,120],['d','Fondo',5,170]];
 let p={...defaults},pack={w:40,h:18,d:18},theta=0,accessOpen=false,cut=!$('section').checked,ghost=$('ghost').checked,guides=$('guide').checked,prev=performance.now();
 let scene,camera,renderer,orbit,interiorLight,root,cabinet,pivot,parcel,access,guideGroup,camTween=null,boxCenterZ=0,hingeZ=0,hingeY=0;
 let cabinetOffset=0,cabinetLocked=true,rollingMeshes=[];
@@ -362,11 +382,12 @@ function init(){scene=new THREE.Scene();scene.background=makeSceneBackground();c
 function initAmazonCatalog(){
  const sel=$('amazonBox');
  const groups=[['Pequeñas · hasta 40 cm',0,40],['Medianas · más de 40 a 60 cm',40,60],
- ['Grandes · más de 60 a 90 cm',60,90],['Muy grandes · más de 90 cm',90,999]];
- for(const [label,low,high]of groups){
+ ['Grandes · más de 60 a 90 cm',60,90],['Muy grandes · más de 90 cm',90,Infinity]]
+  .map(([label,low,high])=>[label,amazonBoxes.filter(([,length])=>length>low && length<=high)]);
+ groups.push(['Sobres de Amazon · medidas de referencia',amazonEnvelopes]);
+ for(const [label,packages]of groups){
   const group=document.createElement('optgroup');group.label=label;
-  for(const [code,L,W,H]of amazonBoxes){
-   if(L<=low||L>high)continue;
+  for(const [code,L,W,H]of packages){
    const option=document.createElement('option');
    option.value=code;option.dataset.label=code+' — '+L+' × '+W+' × '+H+' cm';
    option.textContent=option.dataset.label;
@@ -375,7 +396,7 @@ function initAmazonCatalog(){
   sel.appendChild(group);
  }
  sel.addEventListener('change',()=>{
-  const found=amazonBoxes.find(item=>item[0]===sel.value);
+  const found=amazonPackages.find(item=>item[0]===sel.value);
   if(found){
    const [,d,w,h]=found;
    pack={w,h,d};
@@ -422,8 +443,8 @@ function settingsUI(){
  const pe=$('packageFields');
  for(const [key,label,min,max]of packDefs){
   const row=document.createElement('div');row.className='gridfields';
-  const l=document.createElement('label');l.textContent=label+' de caja (cm)';l.htmlFor='pack_'+key;
-  const n=document.createElement('input');n.id='pack_'+key;n.type='number';n.min=min;n.max=max;n.value=pack[key];
+  const l=document.createElement('label');l.textContent=label+' del paquete (cm)';l.htmlFor='pack_'+key;
+  const n=document.createElement('input');n.id='pack_'+key;n.type='number';n.step='any';n.min=min;n.max=max;n.value=pack[key];
   n.addEventListener('change',()=>{
    pack[key]=Math.max(min,Math.min(max,Number(n.value)||pack[key]));
    n.value=pack[key];
@@ -1173,7 +1194,7 @@ function renderStoredPackage(b,i){
 }
 function updateStoredStatus(){
  const count=stored.length;
- $('storedStatus').textContent=count===0?'Buzón vacío.':count+(count===1?' caja en el buzón.':' cajas en el buzón.');
+ $('storedStatus').textContent=count===0?'Buzón vacío.':count+(count===1?' paquete en el buzón.':' paquetes en el buzón.');
 }
 function refreshGeometry(){
  const removed=stored.length;
@@ -1189,9 +1210,9 @@ function refreshGeometry(){
 }
 const smooth=n=>{n=Math.max(0,Math.min(1,n));return n*n*(3-2*n)};
 function updateChecks(){const risks=[];const hasOpening=pack.w<p.openingW-2*p.gap-2&&pack.h<p.openingH-2*p.gap-2;const canSupport=pack.d<p.tongueL-3 && pack.w<tongueWidth()-3;const fitsCabinet=pack.w<p.boxW-4&&pack.d<p.boxD-5&&pack.h<p.boxH-5;
- if(!hasOpening)risks.push('La caja podría NO pasar por la abertura de entrada.');
- if(!canSupport)risks.push('La caja supera el ancho o la longitud de apoyo nominal de la pestaña interior.');
- if(!fitsCabinet)risks.push('La caja supera alguna dimensión interior del depósito.');
+ if(!hasOpening)risks.push('El paquete podría no pasar por la abertura de entrada.');
+ if(!canSupport)risks.push('El paquete supera el ancho o la longitud de apoyo nominal de la pestaña interior.');
+ if(!fitsCabinet)risks.push('El paquete supera alguna dimensión interior del depósito.');
  if(p.tongueL>p.boxD-10)risks.push('La pestaña podría acercarse demasiado a la puerta interior.');
  if(p.entryY-p.boxFloor<pack.h+10)risks.push('Hay poca altura libre debajo del eje para este paquete.');
  $('checks').innerHTML=`<strong class="${risks.length?'bad':'ok'}">${risks.length?'⚠ Atención geométrica':'✓ Límites básicos compatibles'}</strong><br>`+(risks.length?risks.map(s=>'• '+s).join('<br>'):'La abertura y el depósito admiten las dimensiones nominales seleccionadas.')+`<br><span class="tiny">La caída se comprueba en la pestaña Entregas.</span>`;
@@ -1203,7 +1224,7 @@ function prepareNext(keepAngle=false){
  $('phase').textContent=separated?'Depósito separado del muro':'Tapa cerrada';
  $('message').textContent=separated
   ? 'El depósito se mueve sobre ruedas. El marco y su mecanismo quedan fijos en el muro.'
-  : 'Selecciona una caja y pulsa «Entregar paquete».';
+  : 'Selecciona un paquete y pulsa «Entregar paquete».';
 }
 let physicsTrial=null,physicsLoading=false,trialRevision=0,catalogRunning=false,requestedSeek=null,resumeAfterSeek=false;
 let physicsEnginePromise;
@@ -1310,9 +1331,9 @@ function physicalTrace(R,size=pack,setup=capturePhysicalSetup(),recordFrames=tru
   for(let i=1;i<=insertSteps;i++){
    const next=vec(start.x,start.y,THREE.MathUtils.lerp(start.z,targetZ,i/insertSteps));
    const obstruction=findContact(next,entryRotation,entryShape,.00015);
-   if(obstruction)return finish('No entra en este intento','La caja toca '+obstruction.name.toLowerCase()+' durante la entrada recta.');
+   if(obstruction)return finish('No entra en este intento','El paquete toca '+obstruction.name.toLowerCase()+' durante la entrada recta.');
    position=next;
-   record(position,entryRotation,90,'Introduciendo la caja centrada');
+   record(position,entryRotation,90,'Introduciendo el paquete centrado');
   }
 
   const body=world.createRigidBody(R.RigidBodyDesc.dynamic().setTranslation(position.x,position.y,position.z)
@@ -1331,13 +1352,13 @@ function physicalTrace(R,size=pack,setup=capturePhysicalSetup(),recordFrames=tru
    // A delivery must stay on the open tongue before the lid begins to close.
    if(i===holdSteps-1 && (!tongue.contactShape(shape,at,orientation,.006) ||
       at.y*100<hingeY+size.h/2-.6 || quiet(body.linvel())>.07 || quiet(body.angvel())>.2)){
-    return finish('No se sostiene','La caja no queda apoyada sobre la pestaña con la tapa abierta.');
+    return finish('No se sostiene','El paquete no queda apoyado sobre la pestaña con la tapa abierta.');
    }
    // A driven lid must stop if the solver cannot resolve the contact without visible overlap.
    const obstruction=findContact(at,orientation,shape,.0025);
    if(obstruction){
     if(++unresolved>=8 || obstruction.depth>.016){
-     return finish('Atasco en este intento','La caja quedó presionada contra '+obstruction.name.toLowerCase()+' durante el cierre.');
+     return finish('Atasco en este intento','El paquete quedó presionado contra '+obstruction.name.toLowerCase()+' durante el cierre.');
     }
     // Keep the last valid pose while the solver resolves a transient impact.
     if(recordFrames)frames.push(frames.at(-1));
@@ -1359,14 +1380,14 @@ function physicalTrace(R,size=pack,setup=capturePhysicalSetup(),recordFrames=tru
     if(bounds.min.y>floor+.6){
      const supported=fixed.some(({name,collider})=>name==='Caja depositada' && collider.translation().y<at.y &&
       collider.contactShape(shape,at,orientation,.008));
-     if(!supported)return finish('Suspendida','La caja quedó suspendida y no llegó a un apoyo válido.');
+     if(!supported)return finish('Suspendida','El paquete quedó suspendido y no llegó a un apoyo válido.');
     }
-    return finish('Cayó dentro del depósito','La caja quedó en reposo dentro del depósito y la tapa terminó de cerrar.',true);
+    return finish('Cayó dentro del depósito','El paquete quedó en reposo dentro del depósito y la tapa terminó de cerrar.',true);
    }
-   if(bounds.min.y<floor-1)return finish('Cayó fuera del depósito','La caja terminó apoyada fuera del gabinete.');
-   return finish('Quedó detenida','La caja quedó en reposo sin entrar completamente en el depósito.');
+   if(bounds.min.y<floor-1)return finish('Cayó fuera del depósito','El paquete terminó apoyado fuera del gabinete.');
+   return finish('Quedó detenida','El paquete quedó en reposo sin entrar completamente en el depósito.');
   }
-  return finish('Resultado inconcluso','La caja no se estabilizó durante el tiempo de prueba.');
+  return finish('Resultado inconcluso','El paquete no se estabilizó durante el tiempo de prueba.');
  }finally{
   world.free();
  }
@@ -1570,7 +1591,7 @@ async function moveManualLid(angle){
   const {limit,contact}=getOpeningCheck(engine,packages);
   manualLidAngle=Math.min(angle,limit);
   setAngle(manualLidAngle);
-  $('phase').textContent=contact && angle>limit?'Apertura limitada por una caja':(theta?'Apertura manual de la tapa':'Tapa cerrada');
+  $('phase').textContent=contact && angle>limit?'Apertura limitada por un paquete':(theta?'Apertura manual de la tapa':'Tapa cerrada');
   if(contact)reportOpeningConflict(contact,limit);
  }catch(error){
   console.error(error);
@@ -1617,7 +1638,7 @@ function findDeliveryPose(engine,size,setup){
 }
 
 // Catalog failures for the initial empty configuration at standard friction.
-const defaultBlockedBoxes=["B14","P5","2A8","F3","P4","P9","B11","P7","3A1","Q2","Q3","Q4","Q5","Q6","U0","U3","U5","J7","K89","J7A","CB4"];
+const defaultBlockedPackages=["B14","P5","2A8","F3","P4","P9","B11","P7","3A1","Q2","Q3","Q4","Q5","Q6","U0","U3","U5","J7","K89","J7A","CB4"];
 let fitRevision=0,fitConfig='',deliveryFit=null;
 function markPackageOption(code,blocked){
  const option=Array.from($('amazonBox').options).find(item=>item.value===code);
@@ -1641,7 +1662,7 @@ async function checkSelectedPackage(){
    if(catalogRun?.configKey===JSON.stringify(p)){
     for(const {code,result} of catalogRun.rows)markPackageOption(code,!result.ok);
    }else if(isDefaultCatalogConfig()){
-    for(const code of defaultBlockedBoxes)markPackageOption(code,true);
+    for(const code of defaultBlockedPackages)markPackageOption(code,true);
    }
   }
  }
@@ -1652,27 +1673,27 @@ async function checkSelectedPackage(){
  delete $('packageFields').dataset.fit;
  delete status.dataset.status;
  if($('state').textContent==='Apertura bloqueada')$('state').textContent='Lista';
- const chooseBox='Selecciona un formato de Amazon o escribe las medidas de tu caja.';
- if(!code && !stored.length){status.textContent=chooseBox;return;}
+ const choosePackage='Selecciona una caja o un sobre de Amazon, o escribe las medidas de tu paquete.';
+ if(!code && !stored.length){status.textContent=choosePackage;return;}
  if(cabinetOffset>0 || accessOpen){
-  status.textContent='Acerca el depósito al muro y cierra la puerta interior para comprobar la caja.';
+  status.textContent='Acerca el depósito al muro y cierra la puerta interior para comprobar el paquete.';
   return;
  }
- status.textContent=code?'Comprobando la caja con gravedad y colisiones…':'Comprobando la apertura de la tapa…';
+ status.textContent=code?'Comprobando el paquete con gravedad y colisiones…':'Comprobando la apertura de la tapa…';
  try{
   const engine=await loadPhysicsEngine();
   await yieldCatalogFrame();
   if(revision!==fitRevision)return;
   const opening=stored.length?getOpeningCheck(engine,packagesForOpening()):null;
   if(opening?.contact){reportOpeningConflict(opening.contact,opening.limit);return;}
-  if(!code){status.textContent=chooseBox;return;}
+  if(!code){status.textContent=choosePackage;return;}
   const setup=capturePhysicalSetup();
   const result=findDeliveryPose(engine,pack,setup);
   deliveryFit={...result,setup};
   updateViewportSlider();
   if(result.ok){
    markPackageOption(code,false);
-   status.textContent='La caja seleccionada cabe para la siguiente entrega.';
+   status.textContent='El paquete seleccionado cabe para la siguiente entrega.';
    button.disabled=physicsLoading;
   }else{
    markPackageOption(code,true);
@@ -1681,14 +1702,14 @@ async function checkSelectedPackage(){
    status.dataset.status='blocked';
    const category=trialResult(result);
    status.textContent=category==='No entra'
-    ? 'Esta caja no cabe por la abertura.'
+    ? 'Este paquete no cabe por la abertura.'
     : category==='Inconclusa'
-      ? 'Esta caja no completó una caída válida en las orientaciones probadas.'
-      : 'Esta caja no cabe en la entrega: '+result.detail;
+      ? 'Este paquete no completó una caída válida en las orientaciones probadas.'
+      : 'Este paquete no cabe en la entrega: '+result.detail;
   }
  }catch(error){
   console.error(error);
-  if(revision===fitRevision)status.textContent='No se pudo comprobar la caja. Vuelve a seleccionarla.';
+  if(revision===fitRevision)status.textContent='No se pudo comprobar el paquete. Vuelve a seleccionarlo.';
  }
 }
 
@@ -1747,15 +1768,19 @@ function renderDeliveryCoverage(accepted){
  const large=amazonBoxes.filter(([,length])=>length>60 && length<=90);
  const count=smallAndMedium.filter(([code])=>accepted.has(code)).length;
  const largeCount=large.filter(([code])=>accepted.has(code)).length;
- const veryLargeCount=accepted.size-count-largeCount;
+ const veryLarge=amazonBoxes.filter(([,length])=>length>90);
+ const veryLargeCount=veryLarge.filter(([code])=>accepted.has(code)).length;
+ const envelopeCount=amazonEnvelopes.filter(([code])=>accepted.has(code)).length;
+ const boxCount=count+largeCount+veryLargeCount;
  const smallSummary=count===smallAndMedium.length
   ? 'Pasan todas las chicas y medianas ('+count+').'
   : 'Pasan '+count+' de '+smallAndMedium.length+' chicas y medianas.';
  const largeSummary=largeCount===1
   ? 'Pasa 1 de las '+large.length+' grandes.'
   : 'Pasan '+largeCount+' de '+large.length+' grandes.';
- const veryLargeSummary=veryLargeCount===0?'':(veryLargeCount===1?' Pasa 1 muy grande.':' Pasan '+veryLargeCount+' muy grandes.');
- $('deliveryCoverage').textContent='Pasan '+accepted.size+' de '+amazonBoxes.length+' cajas del catálogo de Amazon. '+smallSummary+' '+largeSummary+veryLargeSummary;
+ const veryLargeSummary=(veryLargeCount===1?'Pasa ':'Pasan ')+veryLargeCount+' de '+veryLarge.length+' muy grandes.';
+ const envelopeSummary=(envelopeCount===1?'Pasa ':'Pasan ')+envelopeCount+' de '+amazonEnvelopes.length+' formatos de sobre (2 cm de grosor).';
+ $('deliveryCoverage').textContent='Pasan '+boxCount+' de '+amazonBoxes.length+' cajas del catálogo de Amazon. '+[smallSummary,largeSummary,veryLargeSummary,envelopeSummary].join(' ');
 }
 function updateDeliveryOverview(){
  for(const [id,key] of [['overviewWidth','openingW'],['overviewHeight','openingH'],['overviewDepth','boxD'],['overviewTotal','boxTop']]){
@@ -1766,11 +1791,11 @@ function updateDeliveryOverview(){
  if(catalogRun?.configKey===key){
   renderDeliveryCoverage(new Set(catalogRun.rows.filter(row=>row.result.ok).map(row=>row.code)));
  }else if(isDefaultCatalogConfig()){
-  renderDeliveryCoverage(new Set(amazonBoxes.filter(([code])=>!defaultBlockedBoxes.includes(code)).map(([code])=>code)));
+  renderDeliveryCoverage(new Set(amazonPackages.filter(([code])=>!defaultBlockedPackages.includes(code)).map(([code])=>code)));
  }else if(cabinetOffset>0 || accessOpen){
-  status.textContent='Acerca el depósito al muro y cierra la puerta para calcular cuántas cajas pasan.';
+  status.textContent='Acerca el depósito al muro y cierra la puerta para calcular cuántos paquetes pasan.';
  }else{
-  status.textContent='Calculando cuántas cajas pasan con estas medidas…';
+  status.textContent='Calculando cuántos paquetes pasan con estas medidas…';
   if(!$('panel-entregas').hidden && catalogJob?.key!==key){
    requestCatalogRun().catch(error=>{
     console.error(error);
@@ -1794,7 +1819,7 @@ function renderCatalogRun(run){
  const output=$('physicsCatalogResults');
  output.dataset.configKey=run.configKey;
  const passed=run.rows.filter(row=>row.result.ok).length;
- $('physicsCatalogSummary').textContent=passed+' de '+run.rows.length+' cajas caen y dejan cerrar la tapa';
+ $('physicsCatalogSummary').textContent=passed+' de '+run.rows.length+' paquetes caen y dejan cerrar la tapa';
  const {openingW,openingH,entryY,wallD,boxD,tongueL}=run.config;
  $('physicsCatalogConfig').textContent=`Abertura ${openingW} × ${openingH} cm · Entrada a ${entryY} cm · Muro ${wallD} cm · Fondo ${boxD} cm · Pestaña ${openingW} × ${tongueL} cm.`;
  $('physicsCatalogRows').replaceChildren(...run.rows.map(({code,size,result})=>{
@@ -1814,7 +1839,7 @@ function renderCatalogRun(run){
   const choose=document.createElement('button');
   choose.type='button';
   choose.textContent='Elegir';
-  choose.setAttribute('aria-label','Elegir caja '+code);
+  choose.setAttribute('aria-label','Elegir '+code);
   choose.onclick=()=>{
    const selector=$('amazonBox');
    selector.value=code;
@@ -1838,7 +1863,7 @@ function requestCatalogRun(){
  job.promise=(async()=>{
   const run={config:setup.config,configKey:key,rows:[]};
   const engine=await loadPhysicsEngine();
-  for(const [code,d,w,h] of amazonBoxes){
+  for(const [code,d,w,h] of amazonPackages){
    await yieldCatalogFrame();
    if(catalogJob!==job || JSON.stringify(p)!==key)return null;
    const size={w,h,d};
@@ -1866,7 +1891,7 @@ async function testPhysicsCatalog(){
  const button=$('physicsCatalog');
  catalogRunning=true;
  button.disabled=true;
- status.textContent='Comprobando las 56 cajas…';
+ status.textContent='Comprobando '+amazonPackages.length+' paquetes…';
  try{
   const run=await requestCatalogRun();
   if(run && JSON.stringify(p)===run.configKey){
