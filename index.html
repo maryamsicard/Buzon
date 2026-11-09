@@ -92,6 +92,13 @@ button:hover{background:#dcebf0}
 .control-tabs button[aria-selected="true"]{background:#d7efe9;color:#105b50;border-color:#62a998;font-weight:650}
 .control-panel{overflow:auto;overscroll-behavior-y:contain;padding:12px 16px 18px}
 .control-panel[hidden]{display:none}
+.delivery-overview{margin-bottom:14px;padding:10px 12px;border:1px solid #cfdee7;border-radius:8px;background:#f5f9fb}
+.delivery-overview h2{margin:0 0 8px}
+.delivery-overview dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:0}
+.delivery-overview dt{color:#50677a;font-size:11px}
+.delivery-overview dd{margin:1px 0 0;font-weight:700}
+#deliveryCoverage{margin:9px 0 2px;color:#126b61;font-weight:650;line-height:1.35}
+.delivery-overview .muted2{margin:0}
 .wheel-choice label{display:block;font-weight:650;margin-bottom:5px}
 .wheel-choice select{width:100%;padding:7px;border:1px solid #bacbd6;border-radius:6px;background:#fff;color:var(--txt)}
 .wheel-choice p{margin:4px 0 10px}
@@ -122,7 +129,7 @@ button:hover{background:#dcebf0}
 }
 </style></head><body>
 <div class="simulator-shell" id="simulatorShell">
-<header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V17 · Vistas del buzón · unidades en cm</small></div><div class="header-links"><span class="pill">Modelo conceptual editable</span><a href="#herrajes">Herrajes</a><a href="#exportar">Planos PDF</a></div></header>
+<header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V17 · Medidas y entregas · unidades en cm</small></div><div class="header-links"><span class="pill">Modelo conceptual editable</span><a href="#herrajes">Herrajes</a><a href="#exportar">Planos PDF</a></div></header>
 <main id="simulador"><aside class="sidebar">
 <div class="control-tabs" id="controlTabs" role="tablist" aria-label="Controles del simulador">
 <button type="button" role="tab" id="tab-vistas" aria-controls="panel-vistas" aria-selected="false" tabindex="-1">Vista</button>
@@ -152,6 +159,17 @@ button:hover{background:#dcebf0}
 <div class="card" id="checks" style="margin-top:10px">Preparando comprobaciones...</div>
 </section>
 <section class="control-panel" id="panel-entregas" role="tabpanel" aria-labelledby="tab-entregas" tabindex="0">
+<section class="delivery-overview" aria-labelledby="deliveryOverviewTitle">
+<h2 id="deliveryOverviewTitle">Medidas actuales del buzón</h2>
+<dl>
+<div><dt>Ancho de abertura</dt><dd id="overviewWidth"></dd></div>
+<div><dt>Alto de abertura</dt><dd id="overviewHeight"></dd></div>
+<div><dt>Fondo del depósito</dt><dd id="overviewDepth"></dd></div>
+<div><dt>Altura total con ruedas</dt><dd id="overviewTotal"></dd></div>
+</dl>
+<p id="deliveryCoverage" role="status">Preparando resultados del catálogo…</p>
+<p class="muted2">Prueba simulada con el depósito vacío y acoplado.</p>
+</section>
 <div class="row"><strong>Simulación de entrega</strong><span class="pill" id="state">Cerrado</span></div>
 <section id="physicsPanel" aria-labelledby="physicsTitle">
 <h2 id="physicsTitle">Elige la caja</h2>
@@ -1486,6 +1504,7 @@ function markPackageOption(code,blocked){
  option.textContent=option.dataset.label+(blocked?' · no cabe':'');
 }
 async function checkSelectedPackage(){
+ updateDeliveryOverview();
  const revision=++fitRevision;
  const selector=$('amazonBox'),status=$('packageFit'),button=$('physics');
  const code=selector.value;
@@ -1496,8 +1515,12 @@ async function checkSelectedPackage(){
    delete option.dataset.fit;
    option.textContent=option.dataset.label;
   }
-  if(!stored.length && cabinetOffset===0 && !accessOpen && Object.keys(defaults).every(key=>p[key]===defaults[key])){
-   for(const code of defaultBlockedBoxes)markPackageOption(code,true);
+  if(!stored.length && cabinetOffset===0 && !accessOpen){
+   if(catalogRun?.configKey===JSON.stringify(p)){
+    for(const {code,result} of catalogRun.rows)markPackageOption(code,!result.ok);
+   }else if(isDefaultCatalogConfig()){
+    for(const code of defaultBlockedBoxes)markPackageOption(code,true);
+   }
   }
  }
  deliveryFit=null;
@@ -1575,7 +1598,7 @@ async function startPhysicsTrial(){
  }
 }
 
-let catalogRun=null;
+let catalogRun=null,catalogJob=null;
 const yieldCatalogFrame=()=>new Promise(requestAnimationFrame);
 function trialResult(result){
  if(result.ok)return 'Cae';
@@ -1585,9 +1608,44 @@ function trialResult(result){
  if(result.outcome.startsWith('Cayó fuera'))return 'Cae fuera';
  return 'Inconclusa';
 }
+function isDefaultCatalogConfig(){
+ return Object.keys(defaults).every(key=>p[key]===defaults[key]);
+}
+function renderDeliveryCoverage(accepted){
+ const smallAndMedium=amazonBoxes.filter(([,length])=>length<=60);
+ const count=smallAndMedium.filter(([code])=>accepted.has(code)).length;
+ const groups=count===smallAndMedium.length
+  ? 'Pasan todas las chicas y medianas ('+count+').'
+  : 'Pasan '+count+' de '+smallAndMedium.length+' chicas y medianas.';
+ $('deliveryCoverage').textContent='Pasan '+accepted.size+' de '+amazonBoxes.length+' cajas del catálogo de Amazon. '+groups;
+}
+function updateDeliveryOverview(){
+ for(const [id,key] of [['overviewWidth','openingW'],['overviewHeight','openingH'],['overviewDepth','boxD'],['overviewTotal','boxTop']]){
+  $(id).textContent=dimensionFormat.format(p[key])+' cm';
+ }
+ const status=$('deliveryCoverage');
+ const key=JSON.stringify(p);
+ if(catalogRun?.configKey===key){
+  renderDeliveryCoverage(new Set(catalogRun.rows.filter(row=>row.result.ok).map(row=>row.code)));
+ }else if(isDefaultCatalogConfig()){
+  renderDeliveryCoverage(new Set(amazonBoxes.filter(([code])=>!defaultBlockedBoxes.includes(code)).map(([code])=>code)));
+ }else if(cabinetOffset>0 || accessOpen){
+  status.textContent='Acerca el depósito al muro y cierra la puerta para calcular cuántas cajas pasan.';
+ }else{
+  status.textContent='Calculando cuántas cajas pasan con estas medidas…';
+  if(!$('panel-entregas').hidden && catalogJob?.key!==key){
+   requestCatalogRun().catch(error=>{
+    console.error(error);
+    if(JSON.stringify(p)===key)status.textContent='No se pudo calcular el resultado. Usa «Comprobar todo el catálogo» para volver a probar.';
+   });
+  }
+ }
+}
 function markCatalogConfigurationChanged(){
- if(catalogRun && catalogRun.configKey!==JSON.stringify(p) && !catalogRunning){
-  $('physicsCatalogStatus').textContent='Las medidas cambiaron. Repite la prueba para actualizar los resultados.';
+ const results=$('physicsCatalogResults');
+ if(!results.hidden && results.dataset.configKey!==JSON.stringify(p)){
+  results.hidden=true;
+  $('physicsCatalogStatus').textContent='Las medidas cambiaron. Repite la prueba para ver el detalle actualizado.';
  }
 }
 function filterCatalogRows(){
@@ -1596,6 +1654,7 @@ function filterCatalogRows(){
 }
 function renderCatalogRun(run){
  const output=$('physicsCatalogResults');
+ output.dataset.configKey=run.configKey;
  const passed=run.rows.filter(row=>row.result.ok).length;
  $('physicsCatalogSummary').textContent=passed+' de '+run.rows.length+' cajas caen y dejan cerrar la tapa';
  const {openingW,openingH,entryY,wallD,boxD,tongueL}=run.config;
@@ -1631,6 +1690,34 @@ function renderCatalogRun(run){
  output.hidden=false;
  output.open=true;
 }
+function requestCatalogRun(){
+ const key=JSON.stringify(p);
+ if(catalogRun?.configKey===key)return Promise.resolve(catalogRun);
+ if(catalogJob?.key===key)return catalogJob.promise;
+ const setup=capturePhysicalSetup(true);
+ const job={key};
+ catalogJob=job;
+ job.promise=(async()=>{
+  const run={config:setup.config,configKey:key,rows:[]};
+  const engine=await loadPhysicsEngine();
+  for(const [code,d,w,h] of amazonBoxes){
+   await yieldCatalogFrame();
+   if(catalogJob!==job || JSON.stringify(p)!==key)return null;
+   const size={w,h,d};
+   const result=findDeliveryPose(engine,size,setup);
+   run.rows.push({code,size,result});
+  }
+  catalogRun=run;
+  updateDeliveryOverview();
+  if(!stored.length && cabinetOffset===0 && !accessOpen){
+   for(const {code,result} of run.rows)markPackageOption(code,!result.ok);
+  }
+  return run;
+ })().finally(()=>{
+  if(catalogJob===job)catalogJob=null;
+ });
+ return job.promise;
+}
 async function testPhysicsCatalog(){
  if(catalogRunning)return;
  const status=$('physicsCatalogStatus');
@@ -1638,25 +1725,18 @@ async function testPhysicsCatalog(){
   status.textContent='Acerca el depósito al muro y cierra la puerta interior antes de probar el catálogo.';
   return;
  }
- const setup=capturePhysicalSetup(true);
- const run={config:setup.config,configKey:JSON.stringify(setup.config),rows:[]};
  const button=$('physicsCatalog');
  catalogRunning=true;
  button.disabled=true;
+ status.textContent='Comprobando las 56 cajas…';
  try{
-  const engine=await loadPhysicsEngine();
-  for(const [code,d,w,h] of amazonBoxes){
-   status.textContent=`Probando ${run.rows.length+1} de ${amazonBoxes.length} · ${code}…`;
-   await yieldCatalogFrame();
-   const size={w,h,d};
-   const result=findDeliveryPose(engine,size,setup);
-   run.rows.push({code,size,result});
+  const run=await requestCatalogRun();
+  if(run && JSON.stringify(p)===run.configKey){
+   renderCatalogRun(run);
+   status.textContent='Prueba completa.';
+  }else{
+   status.textContent='Las medidas cambiaron. Vuelve a comprobar el catálogo.';
   }
-  catalogRun=run;
-  renderCatalogRun(run);
-  const current=JSON.stringify(p)===run.configKey && cabinetOffset===0 && !accessOpen;
-  if(current && !stored.length)for(const {code,result} of run.rows)markPackageOption(code,!result.ok);
-  status.textContent=current?'Prueba completa.':'Prueba completa con las medidas que tenía el buzón al comenzar.';
  }catch(error){
   console.error(error);
   status.textContent='No se pudo completar la prueba del catálogo. Vuelve a intentarlo.';
@@ -1708,6 +1788,7 @@ function initControlTabs(){
    item.tabIndex=selected?0:-1;
    $(item.getAttribute('aria-controls')).hidden=!selected;
   }
+  if(tab.id==='tab-entregas')updateDeliveryOverview();
  };
  for(const [index,tab] of tabs.entries()){
   tab.onclick=()=>activate(tab);
