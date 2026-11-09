@@ -86,7 +86,7 @@ button:hover{background:#dcebf0}
 @media(max-width:640px){.hardware{padding:24px 16px}.hardware-grid{grid-template-columns:1fr}.hardware header{flex-wrap:wrap}}
 @media print{.hardware{display:none}}
 </style></head><body>
-<header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V13 · Entrega de paquetes · unidades en cm</small></div><div class="header-links"><span class="pill">Modelo conceptual editable</span><a href="#herrajes">Herrajes</a><a href="#exportar">Planos PDF</a></div></header>
+<header><div><h1>BUZÓN DE PAQUETES · Simulador 3D</h1><small>V14 · Entrega sobre la pestaña · unidades en cm</small></div><div class="header-links"><span class="pill">Modelo conceptual editable</span><a href="#herrajes">Herrajes</a><a href="#exportar">Planos PDF</a></div></header>
 <main id="simulador"><aside class="sidebar">
 <section class="inspection" aria-labelledby="inspectionTitle">
 <h2 id="inspectionTitle">Vistas de inspección</h2>
@@ -112,7 +112,7 @@ button:hover{background:#dcebf0}
 <div class="card" id="physicsStatus" role="status" hidden></div>
 <details class="catalog-trial">
 <summary>Tabla de medidas por grupo</summary>
-<p class="muted2">La columna Entrada mide desde el piso hasta el borde inferior de la abertura. Muro de 20 cm. Se probaron las cajas por separado con el depósito vacío y fricción de 0.30, 0.35 y 0.40. Los grupos son acumulativos.</p>
+<p class="muted2">La columna Entrada mide desde el piso hasta el borde inferior de la abertura. Muro de 20 cm. Se probaron las cajas por separado con el depósito vacío y fricción de 0.30, 0.35 y 0.40. La caja se coloca junto al eje y debe descansar sobre la pestaña hasta que empiece a cerrar la tapa. Los grupos son acumulativos.</p>
 <div class="delivery-mode">
 <label for="catalogPreset">Aplicar medidas probadas</label>
 <select id="catalogPreset"><option value="">Personalizadas</option></select>
@@ -1180,8 +1180,9 @@ function physicalTrace(R,size=pack,setup=capturePhysicalSetup(),recordFrames=tru
   const start=vec(0,(hingeY+Math.max(1.9,p.tongueT/2+.3)+size.h/2)/100,(front+size.d/2+25)/100);
   const openSteps=Math.round(.6/physicalStep);
   for(let i=0;recordFrames && i<openSteps;i++)record(start,entryRotation,90*smooth(i/openSteps),'Abriendo la tapa');
-  const rearExtent=(Math.abs(Math.sin(angleY))*size.w+Math.abs(Math.cos(angleY))*size.d)/2;
-  const targetZ=(boxBack+.5+rearExtent)/100;
+  const halfDepth=(Math.abs(Math.sin(angleY))*size.w+Math.abs(Math.cos(angleY))*size.d)/2;
+  // Align the street-side edge with the hinge and leave the box over the tongue.
+ const targetZ=(hingeZ-halfDepth)/100;
   const insertSteps=Math.ceil((start.z-targetZ)/(.6*physicalStep));
   let position=start.clone();
   for(let i=1;i<=insertSteps;i++){
@@ -1197,13 +1198,19 @@ function physicalTrace(R,size=pack,setup=capturePhysicalSetup(),recordFrames=tru
   world.createCollider(friction(R.ColliderDesc.cuboid(...dimensions.map(n=>n/200))),body);
   const quiet=v=>Math.hypot(v.x,v.y,v.z);
   const halfSize=dimensions.map(n=>n/2);
+  const tongue=moving.find(({name})=>name==='Pestaña interior solidaria').collider;
+  const holdSteps=Math.round(.35/physicalStep);
   let still=0,unresolved=0;
   for(let i=0;i<Math.round(6/physicalStep);i++){
-   const t=i*physicalStep;
-   const angle=90*(1-smooth((t-.35)/1.45));
+   const angle=90*(1-smooth((i-holdSteps)*physicalStep/1.45));
    lid.setNextKinematicRotation(rotation(angle*PI/180));
    world.step();
    const at=body.translation(),orientation=body.rotation();
+   // A delivery must stay on the open tongue before the lid begins to close.
+   if(i===holdSteps-1 && (!tongue.contactShape(shape,at,orientation,.006) ||
+      at.y*100<hingeY+size.h/2-.6 || quiet(body.linvel())>.07 || quiet(body.angvel())>.2)){
+    return finish('No se sostiene','La caja no queda apoyada sobre la pestaña con la tapa abierta.');
+   }
    // A driven lid must stop if the solver cannot resolve the contact without visible overlap.
    const obstruction=findContact(at,orientation,shape,.0025);
    if(obstruction){
@@ -1216,7 +1223,7 @@ function physicalTrace(R,size=pack,setup=capturePhysicalSetup(),recordFrames=tru
     continue;
    }
    unresolved=0;
-   record(at,orientation,angle,t<.35?'Soltando la caja sobre la pestaña':'Gravedad y contactos');
+   record(at,orientation,angle,i<holdSteps?'Caja sobre la pestaña · tapa abierta':'Cierre de tapa y caída');
    if(angle===0 && quiet(body.linvel())<.025 && quiet(body.angvel())<.10)still++;
    else still=0;
    if(still<Math.round(.5/physicalStep))continue;
@@ -1366,7 +1373,7 @@ function findDeliveryPose(engine,size,setup){
 }
 
 // Catalog failures for the initial empty configuration at standard friction.
-const defaultBlockedBoxes=["P5","P9","Q2","Q4","Q5","Q6","U5","K89","J7A","CB4"];
+const defaultBlockedBoxes=["B14","P5","2A8","F3","P4","P9","B11","P7","3A1","Q2","Q3","Q4","Q5","Q6","U0","U3","U5","J7","K89","J7A","CB4"];
 let fitRevision=0,fitConfig='',deliveryFit=null;
 function markPackageOption(code,blocked){
  const option=Array.from($('amazonBox').options).find(item=>item.value===code);
@@ -1409,7 +1416,7 @@ async function checkSelectedPackage(){
   deliveryFit={...result,setup};
   if(result.ok){
    markPackageOption(code,false);
-   status.textContent='La caja cabe y completa la caída.';
+   status.textContent='La caja se sostiene sobre la pestaña y completa la caída.';
    button.disabled=physicsLoading;
   }else{
    markPackageOption(code,true);
@@ -1467,8 +1474,8 @@ async function startPhysicsTrial(){
 const catalogPresets=[
  {id:'small',label:'Pequeñas',openingW:45,openingH:35,boxD:50,entryY:80,coverage:'16/16'},
  {id:'medium',label:'Hasta medianas',openingW:60,openingH:50,boxD:60,entryY:100,coverage:'34/34'},
- {id:'large',label:'Hasta grandes',openingW:70,openingH:65,boxD:50,entryY:80,coverage:'45/45'},
- {id:'full',label:'Todo el catálogo',openingW:70,openingH:82,boxD:105,entryY:80,coverage:'56/56'}
+ {id:'large',label:'Hasta grandes',openingW:70,openingH:65,boxD:50,entryY:80,coverage:'40/45'},
+ {id:'full',label:'Catálogo completo',openingW:70,openingH:82,boxD:105,entryY:80,coverage:'44–45/56'}
 ];
 let catalogRun=null;
 const yieldCatalogFrame=()=>new Promise(requestAnimationFrame);
@@ -1476,6 +1483,7 @@ function trialResult(result){
  if(result.ok)return 'Cae';
  if(result.outcome.startsWith('No entra'))return 'No entra';
  if(result.outcome.startsWith('Atasco') || result.outcome.startsWith('Quedó detenida') || result.outcome==='Suspendida')return 'Se atora';
+ if(result.outcome==='No se sostiene')return 'No se sostiene';
  if(result.outcome.startsWith('Cayó fuera'))return 'Cae fuera';
  return 'Inconclusa';
 }
